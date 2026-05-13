@@ -1,0 +1,34 @@
+package com.like.likesystem;
+
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class RabbitConfig {
+
+    @Bean
+    public DirectExchange likeExchange() {
+        return new DirectExchange("like.exchange");
+    }
+
+    @Bean
+    public Queue likeQueue() {
+        return new Queue("like.queue");
+    }
+
+    @Bean
+    public Binding likeBinding(Queue likeQueue, DirectExchange likeExchange) {
+        return BindingBuilder.bind(likeQueue).to(likeExchange).with("like.routing.key");
+    }
+
+    @Bean
+    public MessageConverter jackson2JsonMessageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+}
