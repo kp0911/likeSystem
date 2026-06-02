@@ -1,4 +1,4 @@
-package com.like.likesystem;
+package com.like.likesystem.event;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

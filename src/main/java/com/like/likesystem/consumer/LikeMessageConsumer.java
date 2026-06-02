@@ -1,5 +1,8 @@
-package com.like.likesystem;
+package com.like.likesystem.consumer;
 
+import com.like.likesystem.domain.Video;
+import com.like.likesystem.event.LikeEvent;
+import com.like.likesystem.repository.VideoRepository;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -23,10 +26,17 @@ public class LikeMessageConsumer {
             Video video = videoRepository.findById(event.getVideoId())
                     .orElseThrow(() -> new IllegalArgumentException("Video not found"));
             video.addLike();
-            
+
             channel.basicAck(tag, false);
         } catch (Exception e) {
             channel.basicNack(tag, false, false);
+            if (e instanceof IOException ioException) {
+                throw ioException;
+            }
+            if (e instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException(e);
         }
     }
 }

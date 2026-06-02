@@ -1,4 +1,4 @@
-package com.like.likesystem;
+package com.like.likesystem.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;

@@ -1,5 +1,7 @@
-package com.like.likesystem;
+package com.like.likesystem.service;
 
+import com.like.likesystem.domain.Video;
+import com.like.likesystem.repository.VideoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -9,22 +9,16 @@ export const options = {
   ],
 };
 
-const endpoint = __ENV.ENDPOINT || 'sync';
-const url = `http://localhost:8080/api/v1/like/${endpoint}`;
-
 export default function () {
   const payload = JSON.stringify({
     videoId: 1,
-    userId: `user-${__VU}-${__ITER}`,
   });
 
-  const params = {
+  const res = http.post('http://localhost:8080/api/v1/like/sync', payload, {
     headers: {
       'Content-Type': 'application/json',
     },
-  };
-
-  const res = http.post(url, payload, params);
+  });
 
   check(res, {
     'status is 200': (r) => r.status === 200,

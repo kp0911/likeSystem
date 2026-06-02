@@ -1,5 +1,6 @@
-package com.like.likesystem;
+package com.like.likesystem.repository;
 
+import com.like.likesystem.domain.Video;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;

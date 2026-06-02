@@ -1,4 +1,4 @@
-package com.like.likesystem;
+package com.like.likesystem.domain;
 
 import jakarta.persistence.*;
 import lombok.Getter;
