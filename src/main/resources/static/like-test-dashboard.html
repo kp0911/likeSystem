@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Like Test Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: #172026;
+      background: #f5f7f8;
+    }
+
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 32px 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    p {
+      margin: 0 0 24px;
+      color: #5b6670;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      border: 1px solid #d9e0e4;
+    }
+
+    th,
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #e5eaed;
+      text-align: right;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    th {
+      background: #eef3f5;
+      font-weight: 700;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .endpoint {
+      font-weight: 700;
+    }
+
+    .updated {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #6a747c;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>좋아요 테스트 대시보드</h1>
+  <p>sync, 기존 async-event, buffered-async 요청 수와 처리 결과를 1초마다 갱신합니다.</p>
+
+  <table>
+    <thead>
+    <tr>
+      <th>방식</th>
+      <th>요청 수</th>
+      <th>성공</th>
+      <th>실패</th>
+      <th>평균 응답(ms)</th>
+    </tr>
+    </thead>
+    <tbody id="metrics-body"></tbody>
+  </table>
+
+  <div class="updated" id="updated-at">대기 중</div>
+</main>
+
+<script>
+  const labels = {
+    'sync': 'sync - DB 직접 반영',
+    'async-event': 'async-event - 기존 개별 이벤트',
+    'buffered-async': 'buffered-async - Redis 누적 후 배치 반영',
+  };
+
+  async function loadMetrics() {
+    const response = await fetch('/api/v1/like/metrics');
+    const metrics = await response.json();
+    const body = document.getElementById('metrics-body');
+    body.innerHTML = '';
+
+    Object.entries(metrics).forEach(([endpoint, value]) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td class="endpoint">${labels[endpoint] || endpoint}</td>
+        <td>${value.requests.toLocaleString()}</td>
+        <td>${value.successes.toLocaleString()}</td>
+        <td>${value.failures.toLocaleString()}</td>
+        <td>${value.averageDurationMs.toFixed(2)}</td>
+      `;
+      body.appendChild(row);
+    });
+
+    document.getElementById('updated-at').textContent =
+      `마지막 갱신: ${new Date().toLocaleTimeString()}`;
+  }
+
+  loadMetrics();
+  setInterval(loadMetrics, 1000);
+</script>
+</body>
+</html>
