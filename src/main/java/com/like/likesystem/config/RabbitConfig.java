@@ -23,8 +23,18 @@ public class RabbitConfig {
     }
 
     @Bean
+    public Queue likeAggregateQueue() {
+        return new Queue("like.aggregate.queue");
+    }
+
+    @Bean
     public Binding likeBinding(Queue likeQueue, DirectExchange likeExchange) {
         return BindingBuilder.bind(likeQueue).to(likeExchange).with("like.routing.key");
+    }
+
+    @Bean
+    public Binding likeAggregateBinding(Queue likeAggregateQueue, DirectExchange likeExchange) {
+        return BindingBuilder.bind(likeAggregateQueue).to(likeExchange).with("like.aggregate.routing.key");
     }
 
     @Bean

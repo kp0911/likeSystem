@@ -83,11 +83,28 @@ Invoke-RestMethod -Method Post `
   -Body '{"videoId":1,"userId":"manual-user-1"}'
 ```
 
+Buffered asynchronous like processing:
+
+```powershell
+Invoke-RestMethod -Method Post `
+  -Uri http://localhost:8080/api/v1/like/buffered-async `
+  -ContentType 'application/json' `
+  -Body '{"videoId":1,"userId":"manual-buffered-user-1"}'
+```
+
 Check the database value:
 
 ```powershell
 docker exec -it mariadb-container mariadb -u db_user -pdb_password like_system -e "select * from video;"
 ```
+
+Test dashboard:
+
+```text
+http://localhost:8080/like-test-dashboard.html
+```
+
+This dashboard shows request count, success count, failure count, and average response time for `sync`, `async-event`, and `buffered-async`.
 
 ## Reset Test State
 
@@ -115,6 +132,12 @@ Asynchronous endpoint:
 k6 run load-test-async.js
 ```
 
+Buffered asynchronous endpoint:
+
+```powershell
+k6 run load-test-buffered-async.js
+```
+
 Use the same test sequence for a fair comparison:
 
 1. Start Docker containers.
@@ -126,6 +149,10 @@ Use the same test sequence for a fair comparison:
 7. Run `k6 run load-test-async.js`.
 8. Watch RabbitMQ `like.queue` until `Ready` returns to `0`.
 9. Check `video.like_count` again.
+10. Run `.\scripts\reset-test-state.ps1`.
+11. Run `k6 run load-test-buffered-async.js`.
+12. Watch RabbitMQ `like.aggregate.queue` until `Ready` returns to `0`.
+13. Check `video.like_count` again.
 
 Important k6 metrics:
 
@@ -141,6 +168,8 @@ For `/sync`, the HTTP response includes the database update path. If `p(95)` gro
 
 For `/async`, the HTTP response only proves Redis duplicate checking and RabbitMQ publishing were fast. Final database reflection happens later in the consumer, so also watch RabbitMQ:
 
+For `/buffered-async`, the HTTP response only updates Redis. A scheduler periodically flushes Redis pending counts to RabbitMQ as aggregate delta events, and the consumer applies `like_count += delta` to the database.
+
 - `Ready`: messages waiting to be consumed
 - `Unacked`: messages currently handled by consumers
 - `Publish rate`: incoming message rate
@@ -150,6 +179,7 @@ Interpretation:
 
 - If `/async` has low `p(95)` and `Ready` returns to `0` shortly after the test, it is handling bursts well.
 - If `/async` has low `p(95)` but `Ready` keeps growing, API responses are fast but final database reflection is delayed.
+- If `/buffered-async` has low `p(95)` and `like.aggregate.queue` drains quickly, it is reducing RabbitMQ message count and database update count.
 - If `/sync` has high `p(95)` but the database count is immediately accurate, it favors consistency over response speed.
 
 Check final DB count:
@@ -157,4 +187,3 @@ Check final DB count:
 ```powershell
 docker exec -it mariadb-container mariadb -u db_user -pdb_password like_system -e "select id, like_count from video where id = 1;"
 ```
-

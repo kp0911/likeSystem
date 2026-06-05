@@ -1,6 +1,8 @@
 package com.like.likesystem.controller;
 
 import com.like.likesystem.service.LikeAsyncService;
+import com.like.likesystem.service.LikeBufferedAsyncService;
+import com.like.likesystem.service.LikeMetricsService;
 import com.like.likesystem.service.LikeSyncService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -21,17 +23,46 @@ public class LikeController {
 
     private final LikeSyncService likeSyncService;
     private final LikeAsyncService likeAsyncService;
+    private final LikeBufferedAsyncService likeBufferedAsyncService;
+    private final LikeMetricsService likeMetricsService;
 
     @PostMapping("/sync")
     public ResponseEntity<Void> likeSync(@Valid @RequestBody SyncLikeRequest request) {
-        likeSyncService.processLike(request.getVideoId());
-        return ResponseEntity.ok().build();
+        long startedAt = likeMetricsService.start();
+        try {
+            likeSyncService.processLike(request.getVideoId());
+            likeMetricsService.record("sync", startedAt, true);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            likeMetricsService.record("sync", startedAt, false);
+            throw e;
+        }
     }
 
     @PostMapping("/async")
     public ResponseEntity<Void> likeAsync(@Valid @RequestBody AsyncLikeRequest request) {
-        likeAsyncService.processLike(request.getVideoId(), request.getUserId());
-        return ResponseEntity.ok().build();
+        long startedAt = likeMetricsService.start();
+        try {
+            likeAsyncService.processLike(request.getVideoId(), request.getUserId());
+            likeMetricsService.record("async-event", startedAt, true);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            likeMetricsService.record("async-event", startedAt, false);
+            throw e;
+        }
+    }
+
+    @PostMapping("/buffered-async")
+    public ResponseEntity<Void> likeBufferedAsync(@Valid @RequestBody AsyncLikeRequest request) {
+        long startedAt = likeMetricsService.start();
+        try {
+            likeBufferedAsyncService.processLike(request.getVideoId(), request.getUserId());
+            likeMetricsService.record("buffered-async", startedAt, true);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            likeMetricsService.record("buffered-async", startedAt, false);
+            throw e;
+        }
     }
 
     @Data

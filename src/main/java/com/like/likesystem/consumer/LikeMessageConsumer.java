@@ -1,6 +1,7 @@
 package com.like.likesystem.consumer;
 
 import com.like.likesystem.domain.Video;
+import com.like.likesystem.event.LikeCountDeltaEvent;
 import com.like.likesystem.event.LikeEvent;
 import com.like.likesystem.repository.VideoRepository;
 import com.rabbitmq.client.Channel;
@@ -26,6 +27,28 @@ public class LikeMessageConsumer {
             Video video = videoRepository.findById(event.getVideoId())
                     .orElseThrow(() -> new IllegalArgumentException("Video not found"));
             video.addLike();
+
+            channel.basicAck(tag, false);
+        } catch (Exception e) {
+            channel.basicNack(tag, false, false);
+            if (e instanceof IOException ioException) {
+                throw ioException;
+            }
+            if (e instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @RabbitListener(queues = "like.aggregate.queue", ackMode = "MANUAL")
+    @Transactional
+    public void receiveAggregateMessage(LikeCountDeltaEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
+        try {
+            int updated = videoRepository.incrementLikeCountBy(event.getVideoId(), event.getDelta());
+            if (updated == 0) {
+                throw new IllegalArgumentException("Video not found");
+            }
 
             channel.basicAck(tag, false);
         } catch (Exception e) {

@@ -1,6 +1,8 @@
 package com.like.likesystem.controller;
 
 import com.like.likesystem.service.LikeAsyncService;
+import com.like.likesystem.service.LikeBufferedAsyncService;
+import com.like.likesystem.service.LikeMetricsService;
 import com.like.likesystem.service.LikeSyncService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,12 @@ class LikeControllerTest {
 
     @MockBean
     private LikeAsyncService likeAsyncService;
+
+    @MockBean
+    private LikeBufferedAsyncService likeBufferedAsyncService;
+
+    @MockBean
+    private LikeMetricsService likeMetricsService;
 
     @Test
     void likeSyncReturnsOkForValidRequest() throws Exception {
@@ -75,5 +83,25 @@ class LikeControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(likeAsyncService);
+    }
+
+    @Test
+    void likeBufferedAsyncReturnsOkForValidRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/like/buffered-async")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"videoId\":1,\"userId\":\"user-1\"}"))
+                .andExpect(status().isOk());
+
+        verify(likeBufferedAsyncService).processLike(1L, "user-1");
+    }
+
+    @Test
+    void likeBufferedAsyncRejectsBlankUserId() throws Exception {
+        mockMvc.perform(post("/api/v1/like/buffered-async")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"videoId\":1,\"userId\":\"\"}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(likeBufferedAsyncService);
     }
 }

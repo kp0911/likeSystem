@@ -1,5 +1,6 @@
 package com.like.likesystem.consumer;
 
+import com.like.likesystem.event.LikeCountDeltaEvent;
 import com.like.likesystem.domain.Video;
 import com.like.likesystem.event.LikeEvent;
 import com.like.likesystem.repository.VideoRepository;
@@ -39,6 +40,29 @@ class LikeMessageConsumerTest {
         when(videoRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> consumer.receiveMessage(new LikeEvent(1L, "user-1", "LIKE"), channel, 10L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Video not found");
+
+        verify(channel).basicNack(10L, false, false);
+        verify(channel, never()).basicAck(10L, false);
+    }
+
+    @Test
+    void receiveAggregateMessageIncrementsLikeByDeltaAndAcks() throws IOException {
+        when(videoRepository.incrementLikeCountBy(1L, 100L)).thenReturn(1);
+
+        consumer.receiveAggregateMessage(new LikeCountDeltaEvent(1L, 100L), channel, 10L);
+
+        verify(videoRepository).incrementLikeCountBy(1L, 100L);
+        verify(channel).basicAck(10L, false);
+        verify(channel, never()).basicNack(10L, false, false);
+    }
+
+    @Test
+    void receiveAggregateMessageNacksAndRethrowsWhenVideoDoesNotExist() throws IOException {
+        when(videoRepository.incrementLikeCountBy(1L, 100L)).thenReturn(0);
+
+        assertThatThrownBy(() -> consumer.receiveAggregateMessage(new LikeCountDeltaEvent(1L, 100L), channel, 10L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Video not found");
 

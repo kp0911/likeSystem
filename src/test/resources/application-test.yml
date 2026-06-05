@@ -15,3 +15,6 @@ spring:
     listener:
       simple:
         auto-startup: false
+like:
+  buffered:
+    flush-enabled: false
