@@ -13,6 +13,7 @@ public class LikeBufferedAsyncService {
     public static final String PENDING_COUNT_KEY_PREFIX = "like:buffered:pending:video:";
 
     private final StringRedisTemplate redisTemplate;
+    private final LikeFlowMetricsService likeFlowMetricsService;
 
     public void processLike(Long videoId, String userId) {
         String userKey = USER_KEY_PREFIX + videoId;
@@ -22,8 +23,13 @@ public class LikeBufferedAsyncService {
         Long added = redisTemplate.opsForSet().add(userKey, userId);
 
         if (added != null && added > 0) {
+            likeFlowMetricsService.increment(LikeFlowMetricsService.BUFFERED_ASYNC, "redis.dedup.added");
             redisTemplate.opsForValue().increment(displayCountKey);
+            likeFlowMetricsService.increment(LikeFlowMetricsService.BUFFERED_ASYNC, "redis.display.incremented");
             redisTemplate.opsForValue().increment(pendingCountKey);
+            likeFlowMetricsService.increment(LikeFlowMetricsService.BUFFERED_ASYNC, "redis.pending.incremented");
+        } else {
+            likeFlowMetricsService.increment(LikeFlowMetricsService.BUFFERED_ASYNC, "redis.dedup.duplicate");
         }
     }
 }

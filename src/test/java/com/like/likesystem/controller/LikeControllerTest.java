@@ -4,6 +4,7 @@ import com.like.likesystem.service.LikeAsyncService;
 import com.like.likesystem.service.LikeBufferedAsyncService;
 import com.like.likesystem.service.LikeMetricsService;
 import com.like.likesystem.service.LikeSyncService;
+import com.like.likesystem.service.LikeFlowMetricsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -34,6 +35,9 @@ class LikeControllerTest {
 
     @MockBean
     private LikeMetricsService likeMetricsService;
+
+    @MockBean
+    private LikeFlowMetricsService likeFlowMetricsService;
 
     @Test
     void likeSyncReturnsOkForValidRequest() throws Exception {

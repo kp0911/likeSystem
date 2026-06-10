@@ -4,6 +4,7 @@ import com.like.likesystem.service.LikeAsyncService;
 import com.like.likesystem.service.LikeBufferedAsyncService;
 import com.like.likesystem.service.LikeMetricsService;
 import com.like.likesystem.service.LikeSyncService;
+import com.like.likesystem.service.LikeFlowMetricsService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -25,10 +26,12 @@ public class LikeController {
     private final LikeAsyncService likeAsyncService;
     private final LikeBufferedAsyncService likeBufferedAsyncService;
     private final LikeMetricsService likeMetricsService;
+    private final LikeFlowMetricsService likeFlowMetricsService;
 
     @PostMapping("/sync")
     public ResponseEntity<Void> likeSync(@Valid @RequestBody SyncLikeRequest request) {
         long startedAt = likeMetricsService.start();
+        likeFlowMetricsService.increment(LikeFlowMetricsService.SYNC, "request.received");
         try {
             likeSyncService.processLike(request.getVideoId());
             likeMetricsService.record("sync", startedAt, true);
@@ -42,6 +45,7 @@ public class LikeController {
     @PostMapping("/async")
     public ResponseEntity<Void> likeAsync(@Valid @RequestBody AsyncLikeRequest request) {
         long startedAt = likeMetricsService.start();
+        likeFlowMetricsService.increment(LikeFlowMetricsService.ASYNC_EVENT, "request.received");
         try {
             likeAsyncService.processLike(request.getVideoId(), request.getUserId());
             likeMetricsService.record("async-event", startedAt, true);
@@ -55,6 +59,7 @@ public class LikeController {
     @PostMapping("/buffered-async")
     public ResponseEntity<Void> likeBufferedAsync(@Valid @RequestBody AsyncLikeRequest request) {
         long startedAt = likeMetricsService.start();
+        likeFlowMetricsService.increment(LikeFlowMetricsService.BUFFERED_ASYNC, "request.received");
         try {
             likeBufferedAsyncService.processLike(request.getVideoId(), request.getUserId());
             likeMetricsService.record("buffered-async", startedAt, true);

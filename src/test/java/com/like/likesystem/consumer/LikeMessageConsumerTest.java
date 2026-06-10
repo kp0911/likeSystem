@@ -4,6 +4,7 @@ import com.like.likesystem.event.LikeCountDeltaEvent;
 import com.like.likesystem.domain.Video;
 import com.like.likesystem.event.LikeEvent;
 import com.like.likesystem.repository.VideoRepository;
+import com.like.likesystem.service.LikeFlowMetricsService;
 import com.rabbitmq.client.Channel;
 import org.junit.jupiter.api.Test;
 
@@ -20,8 +21,9 @@ import static org.mockito.Mockito.when;
 class LikeMessageConsumerTest {
 
     private final VideoRepository videoRepository = mock(VideoRepository.class);
+    private final LikeFlowMetricsService likeFlowMetricsService = mock(LikeFlowMetricsService.class);
     private final Channel channel = mock(Channel.class);
-    private final LikeMessageConsumer consumer = new LikeMessageConsumer(videoRepository);
+    private final LikeMessageConsumer consumer = new LikeMessageConsumer(videoRepository, likeFlowMetricsService);
 
     @Test
     void receiveMessageIncrementsLikeAndAcks() throws IOException {

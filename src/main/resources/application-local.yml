@@ -12,10 +12,10 @@ spring:
     defer-datasource-initialization: true
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
   sql:
     init:
       mode: always
@@ -37,3 +37,8 @@ spring:
         acknowledge-mode: manual
         concurrency: 5
         max-concurrency: 10
+
+logging:
+  level:
+    org.hibernate.SQL: off
+    org.hibernate.orm.jdbc.bind: off

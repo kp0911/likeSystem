@@ -14,6 +14,7 @@ public class LikeBufferedCountFlushService {
 
     private final StringRedisTemplate redisTemplate;
     private final RabbitTemplate rabbitTemplate;
+    private final LikeFlowMetricsService likeFlowMetricsService;
 
     public Optional<LikeCountDeltaEvent> flushPendingCount(String pendingCountKey) {
         if (!pendingCountKey.startsWith(LikeBufferedAsyncService.PENDING_COUNT_KEY_PREFIX)) {
@@ -30,6 +31,9 @@ public class LikeBufferedCountFlushService {
         Long videoId = parseVideoId(pendingCountKey);
         LikeCountDeltaEvent event = new LikeCountDeltaEvent(videoId, delta);
         rabbitTemplate.convertAndSend("like.exchange", "like.aggregate.routing.key", event);
+        likeFlowMetricsService.increment(LikeFlowMetricsService.BUFFERED_ASYNC, "scheduler.flush.executed");
+        likeFlowMetricsService.add(LikeFlowMetricsService.BUFFERED_ASYNC, "scheduler.flush.delta", delta);
+        likeFlowMetricsService.increment(LikeFlowMetricsService.BUFFERED_ASYNC, "rabbit.aggregate.published");
         return Optional.of(event);
     }
 

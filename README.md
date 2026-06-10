@@ -104,7 +104,9 @@ Test dashboard:
 http://localhost:8080/like-test-dashboard.html
 ```
 
-This dashboard shows request count, success count, failure count, and average response time for `sync`, `async-event`, and `buffered-async`.
+This dashboard shows request count, success count, failure count, average response time, Redis counts, RabbitMQ queue depth, database count, and step-by-step flow metrics for `sync`, `async-event`, and `buffered-async`.
+
+The dashboard can also start k6 load tests through the Spring Boot server. This is intended only for local study and portfolio demonstrations. The server runs only the fixed scripts mapped to `sync`, `async-event`, and `buffered-async`; arbitrary shell commands are not accepted.
 
 ## Reset Test State
 

@@ -20,4 +20,11 @@ public class GlobalExceptionHandler {
         problemDetail.setTitle("Bad Request");
         return problemDetail;
     }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ProblemDetail handleIllegalStateException(IllegalStateException exception) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+        problemDetail.setTitle("Conflict");
+        return problemDetail;
+    }
 }

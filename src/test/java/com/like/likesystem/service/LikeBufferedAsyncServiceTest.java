@@ -14,9 +14,10 @@ import static org.mockito.Mockito.when;
 class LikeBufferedAsyncServiceTest {
 
     private final StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+    private final LikeFlowMetricsService likeFlowMetricsService = mock(LikeFlowMetricsService.class);
     private final SetOperations<String, String> setOperations = mock(SetOperations.class);
     private final ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
-    private final LikeBufferedAsyncService likeBufferedAsyncService = new LikeBufferedAsyncService(redisTemplate);
+    private final LikeBufferedAsyncService likeBufferedAsyncService = new LikeBufferedAsyncService(redisTemplate, likeFlowMetricsService);
 
     @Test
     void processLikeIncrementsDisplayAndPendingCountsWhenUserLikeIsNew() {

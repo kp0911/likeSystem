@@ -4,6 +4,7 @@ import com.like.likesystem.domain.Video;
 import com.like.likesystem.event.LikeCountDeltaEvent;
 import com.like.likesystem.event.LikeEvent;
 import com.like.likesystem.repository.VideoRepository;
+import com.like.likesystem.service.LikeFlowMetricsService;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -19,14 +20,17 @@ import java.io.IOException;
 public class LikeMessageConsumer {
 
     private final VideoRepository videoRepository;
+    private final LikeFlowMetricsService likeFlowMetricsService;
 
     @RabbitListener(queues = "like.queue", ackMode = "MANUAL")
     @Transactional
     public void receiveMessage(LikeEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
         try {
+            likeFlowMetricsService.increment(LikeFlowMetricsService.ASYNC_EVENT, "consumer.event.received");
             Video video = videoRepository.findById(event.getVideoId())
                     .orElseThrow(() -> new IllegalArgumentException("Video not found"));
             video.addLike();
+            likeFlowMetricsService.increment(LikeFlowMetricsService.ASYNC_EVENT, "db.event.updated");
 
             channel.basicAck(tag, false);
         } catch (Exception e) {
@@ -45,10 +49,12 @@ public class LikeMessageConsumer {
     @Transactional
     public void receiveAggregateMessage(LikeCountDeltaEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
         try {
+            likeFlowMetricsService.increment(LikeFlowMetricsService.BUFFERED_ASYNC, "consumer.aggregate.received");
             int updated = videoRepository.incrementLikeCountBy(event.getVideoId(), event.getDelta());
             if (updated == 0) {
                 throw new IllegalArgumentException("Video not found");
             }
+            likeFlowMetricsService.add(LikeFlowMetricsService.BUFFERED_ASYNC, "db.aggregate.updated", event.getDelta());
 
             channel.basicAck(tag, false);
         } catch (Exception e) {

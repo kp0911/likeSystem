@@ -22,9 +22,10 @@ class LikeAsyncServiceTest {
 
     private final StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
     private final RabbitTemplate rabbitTemplate = mock(RabbitTemplate.class);
+    private final LikeFlowMetricsService likeFlowMetricsService = mock(LikeFlowMetricsService.class);
     private final SetOperations<String, String> setOperations = mock(SetOperations.class);
     private final ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
-    private final LikeAsyncService likeAsyncService = new LikeAsyncService(redisTemplate, rabbitTemplate);
+    private final LikeAsyncService likeAsyncService = new LikeAsyncService(redisTemplate, rabbitTemplate, likeFlowMetricsService);
 
     @Test
     void processLikePublishesEventWhenUserLikeIsNew() {

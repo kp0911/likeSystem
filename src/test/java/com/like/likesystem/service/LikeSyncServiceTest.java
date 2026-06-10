@@ -14,7 +14,8 @@ import static org.mockito.Mockito.when;
 class LikeSyncServiceTest {
 
     private final VideoRepository videoRepository = mock(VideoRepository.class);
-    private final LikeSyncService likeSyncService = new LikeSyncService(videoRepository);
+    private final LikeFlowMetricsService likeFlowMetricsService = mock(LikeFlowMetricsService.class);
+    private final LikeSyncService likeSyncService = new LikeSyncService(videoRepository, likeFlowMetricsService);
 
     @Test
     void processLikeIncrementsLikeCount() {

@@ -21,8 +21,9 @@ class LikeBufferedCountFlushServiceTest {
 
     private final StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
     private final RabbitTemplate rabbitTemplate = mock(RabbitTemplate.class);
+    private final LikeFlowMetricsService likeFlowMetricsService = mock(LikeFlowMetricsService.class);
     private final ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
-    private final LikeBufferedCountFlushService flushService = new LikeBufferedCountFlushService(redisTemplate, rabbitTemplate);
+    private final LikeBufferedCountFlushService flushService = new LikeBufferedCountFlushService(redisTemplate, rabbitTemplate, likeFlowMetricsService);
 
     @Test
     void flushPendingCountPublishesAggregateEventAndResetsCount() {

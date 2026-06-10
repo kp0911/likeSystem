@@ -11,11 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class LikeSyncService {
 
     private final VideoRepository videoRepository;
+    private final LikeFlowMetricsService likeFlowMetricsService;
 
     @Transactional
     public void processLike(Long videoId) {
         Video video = videoRepository.findByIdWithPessimisticLock(videoId)
                 .orElseThrow(() -> new IllegalArgumentException("Video not found"));
         video.addLike();
+        likeFlowMetricsService.increment(LikeFlowMetricsService.SYNC, "db.direct.updated");
     }
 }
