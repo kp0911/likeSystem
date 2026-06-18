@@ -16,7 +16,6 @@ public class LoadTestRunnerService {
     private static final Path RESULT_DIR = Path.of("build", "k6-results");
     private static final Map<String, LoadTestDefinition> DEFINITIONS = Map.of(
             "sync", new LoadTestDefinition("sync", "load-test-sync.js", RESULT_DIR.resolve("sync-latest.json")),
-            "async-event", new LoadTestDefinition("async-event", "load-test-async.js", RESULT_DIR.resolve("async-event-latest.json")),
             "buffered-async", new LoadTestDefinition("buffered-async", "load-test-buffered-async.js", RESULT_DIR.resolve("buffered-async-latest.json"))
     );
 

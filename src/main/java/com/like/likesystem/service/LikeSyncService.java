@@ -15,7 +15,7 @@ public class LikeSyncService {
 
     @Transactional
     public void processLike(Long videoId) {
-        Video video = videoRepository.findByIdWithPessimisticLock(videoId)
+        Video video = videoRepository.findById(videoId)
                 .orElseThrow(() -> new IllegalArgumentException("Video not found"));
         video.addLike();
         likeFlowMetricsService.increment(LikeFlowMetricsService.SYNC, "db.direct.updated");

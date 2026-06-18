@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.LongAdder;
 public class LikeFlowMetricsService {
 
     public static final String SYNC = "sync";
-    public static final String ASYNC_EVENT = "async-event";
     public static final String BUFFERED_ASYNC = "buffered-async";
 
     private final ConcurrentHashMap<String, ConcurrentHashMap<String, LongAdder>> metrics = new ConcurrentHashMap<>();
@@ -31,7 +30,6 @@ public class LikeFlowMetricsService {
     public Map<String, Map<String, Long>> snapshot() {
         Map<String, Map<String, Long>> snapshot = new LinkedHashMap<>();
         snapshot.put(SYNC, snapshotOf(SYNC));
-        snapshot.put(ASYNC_EVENT, snapshotOf(ASYNC_EVENT));
         snapshot.put(BUFFERED_ASYNC, snapshotOf(BUFFERED_ASYNC));
         return snapshot;
     }

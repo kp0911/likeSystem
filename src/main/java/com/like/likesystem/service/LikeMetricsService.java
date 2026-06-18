@@ -30,7 +30,6 @@ public class LikeMetricsService {
     public Map<String, EndpointMetricSnapshot> snapshot() {
         Map<String, EndpointMetricSnapshot> snapshot = new LinkedHashMap<>();
         snapshot.put("sync", snapshotOf("sync"));
-        snapshot.put("async-event", snapshotOf("async-event"));
         snapshot.put("buffered-async", snapshotOf("buffered-async"));
         return snapshot;
     }

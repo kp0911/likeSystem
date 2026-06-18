@@ -27,26 +27,20 @@ class LikeSystemStateServiceTest {
     void combinesRedisRabbitAndDatabaseState() {
         Video video = new Video();
         video.addLike();
-        Properties eventQueueProperties = new Properties();
-        eventQueueProperties.put(RabbitAdmin.QUEUE_MESSAGE_COUNT, 3);
         Properties aggregateQueueProperties = new Properties();
         aggregateQueueProperties.put(RabbitAdmin.QUEUE_MESSAGE_COUNT, 2);
 
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("like:count:video:1")).thenReturn("5");
         when(valueOperations.get("like:buffered:display:video:1")).thenReturn("7");
         when(valueOperations.get("like:buffered:pending:video:1")).thenReturn("4");
         when(videoRepository.findById(1L)).thenReturn(Optional.of(video));
-        when(rabbitAdmin.getQueueProperties("like.queue")).thenReturn(eventQueueProperties);
         when(rabbitAdmin.getQueueProperties("like.aggregate.queue")).thenReturn(aggregateQueueProperties);
 
         LikeSystemStateService.LikeSystemStateSnapshot snapshot = service.snapshot(1L);
 
-        assertThat(snapshot.asyncEventRedisCount()).isEqualTo(5L);
         assertThat(snapshot.bufferedDisplayCount()).isEqualTo(7L);
         assertThat(snapshot.bufferedPendingCount()).isEqualTo(4L);
         assertThat(snapshot.databaseLikeCount()).isEqualTo(1L);
-        assertThat(snapshot.eventQueueMessages()).isEqualTo(3L);
         assertThat(snapshot.aggregateQueueMessages()).isEqualTo(2L);
     }
 }

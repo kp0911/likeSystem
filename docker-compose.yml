@@ -1,4 +1,19 @@
 services:
+  app:
+    build: .
+    container_name: like-system-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
   mariadb:
     image: mariadb:10.11
     container_name: mariadb-container
@@ -12,6 +27,11 @@ services:
     command:
       - --max_connections=200
       - --innodb_buffer_pool_size=256M
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "db_user", "-pdb_password"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   redis:
     image: redis:7.2
@@ -28,6 +48,11 @@ services:
       - 512mb
       - --maxmemory-policy
       - volatile-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   rabbitmq:
     image: rabbitmq:3.13-management
@@ -38,3 +63,8 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping && rabbitmq-diagnostics -q check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 20

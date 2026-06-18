@@ -20,11 +20,9 @@ public class LikeSystemStateService {
     public LikeSystemStateSnapshot snapshot(Long videoId) {
         return new LikeSystemStateSnapshot(
                 videoId,
-                readLong("like:count:video:" + videoId),
                 readLong(LikeBufferedAsyncService.DISPLAY_COUNT_KEY_PREFIX + videoId),
                 readLong(LikeBufferedAsyncService.PENDING_COUNT_KEY_PREFIX + videoId),
                 videoRepository.findById(videoId).map(Video::getLikeCount).orElse(0L),
-                queueMessages("like.queue"),
                 queueMessages("like.aggregate.queue")
         );
     }
@@ -52,11 +50,9 @@ public class LikeSystemStateService {
 
     public record LikeSystemStateSnapshot(
             Long videoId,
-            long asyncEventRedisCount,
             long bufferedDisplayCount,
             long bufferedPendingCount,
             long databaseLikeCount,
-            long eventQueueMessages,
             long aggregateQueueMessages
     ) {
     }

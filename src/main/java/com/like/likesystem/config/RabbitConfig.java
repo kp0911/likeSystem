@@ -20,18 +20,8 @@ public class RabbitConfig {
     }
 
     @Bean
-    public Queue likeQueue() {
-        return new Queue("like.queue");
-    }
-
-    @Bean
     public Queue likeAggregateQueue() {
         return new Queue("like.aggregate.queue");
-    }
-
-    @Bean
-    public Binding likeBinding(Queue likeQueue, DirectExchange likeExchange) {
-        return BindingBuilder.bind(likeQueue).to(likeExchange).with("like.routing.key");
     }
 
     @Bean

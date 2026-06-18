@@ -1,6 +1,5 @@
 package com.like.likesystem.controller;
 
-import com.like.likesystem.service.LikeAsyncService;
 import com.like.likesystem.service.LikeBufferedAsyncService;
 import com.like.likesystem.service.LikeMetricsService;
 import com.like.likesystem.service.LikeSyncService;
@@ -23,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class LikeController {
 
     private final LikeSyncService likeSyncService;
-    private final LikeAsyncService likeAsyncService;
     private final LikeBufferedAsyncService likeBufferedAsyncService;
     private final LikeMetricsService likeMetricsService;
     private final LikeFlowMetricsService likeFlowMetricsService;
@@ -38,20 +36,6 @@ public class LikeController {
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
             likeMetricsService.record("sync", startedAt, false);
-            throw e;
-        }
-    }
-
-    @PostMapping("/async")
-    public ResponseEntity<Void> likeAsync(@Valid @RequestBody AsyncLikeRequest request) {
-        long startedAt = likeMetricsService.start();
-        likeFlowMetricsService.increment(LikeFlowMetricsService.ASYNC_EVENT, "request.received");
-        try {
-            likeAsyncService.processLike(request.getVideoId(), request.getUserId());
-            likeMetricsService.record("async-event", startedAt, true);
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            likeMetricsService.record("async-event", startedAt, false);
             throw e;
         }
     }

@@ -20,7 +20,7 @@ class LikeSyncServiceTest {
     @Test
     void processLikeIncrementsLikeCount() {
         Video video = new Video();
-        when(videoRepository.findByIdWithPessimisticLock(1L)).thenReturn(Optional.of(video));
+        when(videoRepository.findById(1L)).thenReturn(Optional.of(video));
 
         likeSyncService.processLike(1L);
 
@@ -29,7 +29,7 @@ class LikeSyncServiceTest {
 
     @Test
     void processLikeThrowsWhenVideoDoesNotExist() {
-        when(videoRepository.findByIdWithPessimisticLock(1L)).thenReturn(Optional.empty());
+        when(videoRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> likeSyncService.processLike(1L))
                 .isInstanceOf(IllegalArgumentException.class)

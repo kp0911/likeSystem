@@ -41,7 +41,7 @@ class LikeMetricsControllerTest {
     @Test
     void systemStateReturnsOk() throws Exception {
         when(likeSystemStateService.snapshot(1L)).thenReturn(
-                new LikeSystemStateService.LikeSystemStateSnapshot(1L, 0L, 0L, 0L, 0L, 0L, 0L)
+                new LikeSystemStateService.LikeSystemStateSnapshot(1L, 0L, 0L, 0L, 0L)
         );
 
         mockMvc.perform(get("/api/v1/like/system-state?videoId=1"))

@@ -1,6 +1,5 @@
 package com.like.likesystem.controller;
 
-import com.like.likesystem.service.LikeAsyncService;
 import com.like.likesystem.service.LikeBufferedAsyncService;
 import com.like.likesystem.service.LikeMetricsService;
 import com.like.likesystem.service.LikeSyncService;
@@ -26,9 +25,6 @@ class LikeControllerTest {
 
     @MockBean
     private LikeSyncService likeSyncService;
-
-    @MockBean
-    private LikeAsyncService likeAsyncService;
 
     @MockBean
     private LikeBufferedAsyncService likeBufferedAsyncService;
@@ -67,26 +63,6 @@ class LikeControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"videoId\":999}"))
                 .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void likeAsyncReturnsOkForValidRequest() throws Exception {
-        mockMvc.perform(post("/api/v1/like/async")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"videoId\":1,\"userId\":\"user-1\"}"))
-                .andExpect(status().isOk());
-
-        verify(likeAsyncService).processLike(1L, "user-1");
-    }
-
-    @Test
-    void likeAsyncRejectsBlankUserId() throws Exception {
-        mockMvc.perform(post("/api/v1/like/async")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"videoId\":1,\"userId\":\"\"}"))
-                .andExpect(status().isBadRequest());
-
-        verifyNoInteractions(likeAsyncService);
     }
 
     @Test
