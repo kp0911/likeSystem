@@ -24,6 +24,11 @@ public class LoadTestController {
         return ResponseEntity.accepted().body(loadTestRunnerService.start(request.mode()));
     }
 
+    @PostMapping("/stop")
+    public LoadTestRunnerService.LoadTestStatus stop() {
+        return loadTestRunnerService.stop();
+    }
+
     @GetMapping("/current")
     public LoadTestRunnerService.LoadTestStatus current() {
         return loadTestRunnerService.current();

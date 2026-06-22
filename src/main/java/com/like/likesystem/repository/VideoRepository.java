@@ -11,4 +11,8 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
     @Modifying
     @Query("UPDATE Video v SET v.likeCount = v.likeCount + :delta WHERE v.id = :id")
     int incrementLikeCountBy(@Param("id") Long id, @Param("delta") Long delta);
+
+    @Modifying
+    @Query("UPDATE Video v SET v.likeCount = :likeCount WHERE v.id = :id")
+    int resetLikeCount(@Param("id") Long id, @Param("likeCount") Long likeCount);
 }

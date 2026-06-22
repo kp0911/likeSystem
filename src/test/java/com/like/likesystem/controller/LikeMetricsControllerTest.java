@@ -3,6 +3,7 @@ package com.like.likesystem.controller;
 import com.like.likesystem.service.LikeFlowMetricsService;
 import com.like.likesystem.service.LikeMetricsService;
 import com.like.likesystem.service.LikeSystemStateService;
+import com.like.likesystem.service.LikeTestStateResetService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -29,6 +30,9 @@ class LikeMetricsControllerTest {
 
     @MockBean
     private LikeSystemStateService likeSystemStateService;
+
+    @MockBean
+    private LikeTestStateResetService likeTestStateResetService;
 
     @Test
     void flowMetricsReturnsOk() throws Exception {

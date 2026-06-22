@@ -34,6 +34,10 @@ public class LikeMetricsService {
         return snapshot;
     }
 
+    public void reset() {
+        metrics.clear();
+    }
+
     private EndpointMetricSnapshot snapshotOf(String endpoint) {
         EndpointMetric metric = metrics.computeIfAbsent(endpoint, ignored -> new EndpointMetric());
         long requests = metric.requests.sum();

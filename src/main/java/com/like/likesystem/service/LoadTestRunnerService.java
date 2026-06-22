@@ -22,6 +22,8 @@ public class LoadTestRunnerService {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile LoadTestStatus currentStatus = LoadTestStatus.idle();
     private volatile String latestMode;
+    private volatile Process currentProcess;
+    private volatile boolean stopRequested;
 
     public LoadTestStatus start(String mode) {
         LoadTestDefinition definition = DEFINITIONS.get(mode);
@@ -32,13 +34,26 @@ public class LoadTestRunnerService {
             throw new IllegalStateException("Load test is already running");
         }
 
-        currentStatus = new LoadTestStatus(true, mode, Instant.now(), null, null);
+        currentStatus = new LoadTestStatus(true, mode, Instant.now(), null, null, false);
         latestMode = mode;
+        stopRequested = false;
 
         Thread thread = new Thread(() -> runK6(definition), "k6-" + mode);
         thread.setDaemon(true);
         thread.start();
 
+        return currentStatus;
+    }
+
+    public LoadTestStatus stop() {
+        Process process = currentProcess;
+        if (!running.get() || process == null || !process.isAlive()) {
+            return currentStatus;
+        }
+
+        stopRequested = true;
+        process.destroy();
+        currentStatus = new LoadTestStatus(true, currentStatus.mode(), currentStatus.startedAt(), null, "k6 중지 요청을 보냈습니다.", false);
         return currentStatus;
     }
 
@@ -78,15 +93,22 @@ public class LoadTestRunnerService {
                     .redirectErrorStream(true)
                     .redirectOutput(RESULT_DIR.resolve(definition.mode() + "-latest.log").toFile())
                     .start();
+            currentProcess = process;
 
             int exitCode = process.waitFor();
-            currentStatus = new LoadTestStatus(false, definition.mode(), currentStatus.startedAt(), exitCode, null);
+            if (stopRequested) {
+                currentStatus = new LoadTestStatus(false, definition.mode(), currentStatus.startedAt(), exitCode, "k6 테스트를 중지했습니다.", true);
+            } else {
+                currentStatus = new LoadTestStatus(false, definition.mode(), currentStatus.startedAt(), exitCode, null, false);
+            }
         } catch (IOException e) {
-            currentStatus = new LoadTestStatus(false, definition.mode(), currentStatus.startedAt(), null, "k6 실행 실패: PATH 또는 설치 상태를 확인하세요.");
+            currentStatus = new LoadTestStatus(false, definition.mode(), currentStatus.startedAt(), null, "k6 실행 실패: PATH 또는 설치 상태를 확인하세요.", false);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            currentStatus = new LoadTestStatus(false, definition.mode(), currentStatus.startedAt(), null, "k6 실행이 중단되었습니다.");
+            currentStatus = new LoadTestStatus(false, definition.mode(), currentStatus.startedAt(), null, "k6 실행이 중단되었습니다.", true);
         } finally {
+            currentProcess = null;
+            stopRequested = false;
             running.set(false);
         }
     }
@@ -99,10 +121,11 @@ public class LoadTestRunnerService {
             String mode,
             Instant startedAt,
             Integer exitCode,
-            String errorMessage
+            String errorMessage,
+            boolean stopped
     ) {
         private static LoadTestStatus idle() {
-            return new LoadTestStatus(false, null, null, null, null);
+            return new LoadTestStatus(false, null, null, null, null, false);
         }
     }
 }

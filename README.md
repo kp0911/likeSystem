@@ -5,7 +5,7 @@ Spring Boot based like processing example comparing direct database updates and 
 ## Requirements
 
 - Docker Desktop
-- k6 for load testing
+- k6 for host-side load testing. The Docker app image already includes k6 for dashboard-triggered tests.
 
 ## Profiles
 
@@ -76,7 +76,7 @@ http://localhost:8080/like-test-dashboard.html
 
 This dashboard shows request count, success count, failure count, average response time, Redis counts, RabbitMQ queue depth, database count, and step-by-step flow metrics for `sync` and `buffered-async`.
 
-The dashboard can also start k6 load tests through the Spring Boot server when k6 is available in the running environment. For Docker-based app execution, running k6 from the host is the most predictable option.
+When the project is started with `docker compose up --build -d`, the app container includes k6, so the dashboard can start load tests directly.
 
 ## Reset Test State
 

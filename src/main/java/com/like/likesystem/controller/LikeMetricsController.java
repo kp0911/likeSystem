@@ -3,8 +3,10 @@ package com.like.likesystem.controller;
 import com.like.likesystem.service.LikeMetricsService;
 import com.like.likesystem.service.LikeFlowMetricsService;
 import com.like.likesystem.service.LikeSystemStateService;
+import com.like.likesystem.service.LikeTestStateResetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,6 +21,7 @@ public class LikeMetricsController {
     private final LikeMetricsService likeMetricsService;
     private final LikeFlowMetricsService likeFlowMetricsService;
     private final LikeSystemStateService likeSystemStateService;
+    private final LikeTestStateResetService likeTestStateResetService;
 
     @GetMapping("/metrics")
     public Map<String, LikeMetricsService.EndpointMetricSnapshot> metrics() {
@@ -35,5 +38,12 @@ public class LikeMetricsController {
             @RequestParam(defaultValue = "1") Long videoId
     ) {
         return likeSystemStateService.snapshot(videoId);
+    }
+
+    @PostMapping("/test-state/reset")
+    public LikeTestStateResetService.ResetResult resetTestState(
+            @RequestParam(defaultValue = "1") Long videoId
+    ) {
+        return likeTestStateResetService.reset(videoId);
     }
 }

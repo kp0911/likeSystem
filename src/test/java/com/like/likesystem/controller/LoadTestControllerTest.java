@@ -26,7 +26,7 @@ class LoadTestControllerTest {
     @Test
     void startReturnsAcceptedForAllowedMode() throws Exception {
         when(loadTestRunnerService.start("sync")).thenReturn(
-                new LoadTestRunnerService.LoadTestStatus(true, "sync", Instant.now(), null, null)
+                new LoadTestRunnerService.LoadTestStatus(true, "sync", Instant.now(), null, null, false)
         );
 
         mockMvc.perform(post("/api/v1/load-tests/start")
@@ -41,5 +41,15 @@ class LoadTestControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"mode\":\"\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void stopReturnsOk() throws Exception {
+        when(loadTestRunnerService.stop()).thenReturn(
+                new LoadTestRunnerService.LoadTestStatus(false, "sync", Instant.now(), 143, "k6 테스트를 중지했습니다.", true)
+        );
+
+        mockMvc.perform(post("/api/v1/load-tests/stop"))
+                .andExpect(status().isOk());
     }
 }

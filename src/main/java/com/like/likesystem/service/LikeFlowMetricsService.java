@@ -34,6 +34,10 @@ public class LikeFlowMetricsService {
         return snapshot;
     }
 
+    public void reset() {
+        metrics.clear();
+    }
+
     private Map<String, Long> snapshotOf(String mode) {
         Map<String, Long> values = new LinkedHashMap<>();
         ConcurrentHashMap<String, LongAdder> steps = metrics.computeIfAbsent(mode, ignored -> new ConcurrentHashMap<>());

@@ -5,40 +5,113 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Like System Dashboard</title>
   <style>
+    :root {
+      --bg: #f5f7f8;
+      --text: #172026;
+      --muted: #64727d;
+      --line: #d9e1e6;
+      --panel: #ffffff;
+      --sync: #2563eb;
+      --buffered: #0f766e;
+      --warn: #b45309;
+      --danger: #c92a2a;
+      --ok: #087f5b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      color: #172026;
-      background: #f4f6f7;
+      font-family: Arial, "Malgun Gothic", sans-serif;
+      color: var(--text);
+      background: var(--bg);
     }
 
     main {
-      max-width: 1120px;
+      max-width: 1180px;
       margin: 0 auto;
-      padding: 28px 20px 40px;
+      padding: 28px 20px 44px;
     }
 
     header {
       display: flex;
+      align-items: flex-end;
       justify-content: space-between;
       gap: 16px;
-      align-items: flex-end;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      letter-spacing: 0;
     }
 
     h1 {
-      margin: 0 0 6px;
       font-size: 28px;
+      line-height: 1.2;
     }
 
     h2 {
-      margin: 28px 0 12px;
-      font-size: 20px;
+      margin-top: 26px;
+      margin-bottom: 12px;
+      font-size: 19px;
+    }
+
+    h3 {
+      font-size: 15px;
     }
 
     .muted {
-      color: #62707a;
+      color: var(--muted);
       font-size: 13px;
+    }
+
+    .header-copy {
+      display: grid;
+      gap: 6px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    button {
+      min-height: 38px;
+      border: 1px solid #9fb1bc;
+      background: #ffffff;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 9px 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: #1d4ed8;
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    button.buffered {
+      border-color: #0f766e;
+      background: #0f766e;
+      color: #ffffff;
+    }
+
+    button.danger {
+      border-color: #c92a2a;
+      background: #ffffff;
+      color: #c92a2a;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
     }
 
     .grid {
@@ -57,8 +130,8 @@
     .panel,
     .metric,
     .step {
-      background: #ffffff;
-      border: 1px solid #d8e0e4;
+      background: var(--panel);
+      border: 1px solid var(--line);
       border-radius: 6px;
     }
 
@@ -67,14 +140,21 @@
     }
 
     .metric {
+      min-height: 92px;
       padding: 14px;
-      min-height: 86px;
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+
+    .metric.changed {
+      border-color: #0f766e;
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+      transform: translateY(-1px);
     }
 
     .label {
-      color: #62707a;
-      font-size: 12px;
       margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
     }
 
     .value {
@@ -83,45 +163,145 @@
       line-height: 1.1;
     }
 
+    .subvalue {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .status-text {
+      display: flex;
+      align-items: center;
+      min-height: 38px;
+      gap: 10px;
+      font-weight: 700;
+    }
+
+    .status-text.idle {
+      color: var(--muted);
+    }
+
+    .status-text.running {
+      color: var(--warn);
+    }
+
+    .status-text.ok {
+      color: var(--ok);
+    }
+
+    .status-text.error {
+      color: var(--danger);
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid #f1d6a8;
+      border-top-color: var(--warn);
+      border-radius: 50%;
+      animation: spin 800ms linear infinite;
+    }
+
+    .activity {
+      height: 10px;
+      margin-top: 14px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e7edf1;
+    }
+
+    .activity-bar {
+      width: 35%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--sync), var(--buffered));
+      transform: translateX(-110%);
+    }
+
+    .activity.running .activity-bar {
+      animation: sweep 1100ms ease-in-out infinite;
+    }
+
     .flow-column {
       display: flex;
       flex-direction: column;
       gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .flow-column::before {
+      content: "";
+      position: absolute;
+      left: 24px;
+      top: 52px;
+      bottom: 16px;
+      width: 2px;
+      background: #d9e1e6;
+    }
+
+    .flow-column.running::after {
+      content: "";
+      position: absolute;
+      left: 20px;
+      top: 52px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: flowPulse 1800ms linear infinite;
+    }
+
+    .flow-column.sync {
+      color: var(--sync);
+    }
+
+    .flow-column.buffered-async {
+      color: var(--buffered);
     }
 
     .step {
-      padding: 12px;
+      position: relative;
       min-height: 72px;
+      padding: 12px 12px 12px 36px;
+      color: var(--text);
     }
 
-    button {
-      border: 1px solid #9fb1bc;
+    .step::before {
+      content: "";
+      position: absolute;
+      left: 18px;
+      top: 20px;
+      width: 10px;
+      height: 10px;
+      border: 2px solid currentColor;
+      border-radius: 50%;
       background: #ffffff;
-      color: #172026;
-      border-radius: 6px;
-      padding: 10px 14px;
-      font-weight: 700;
-      cursor: pointer;
-      margin-right: 8px;
-      margin-bottom: 8px;
     }
 
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
+    .step.active {
+      border-color: currentColor;
+      box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 16%, transparent);
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
       background: #ffffff;
-      border: 1px solid #d8e0e4;
+      border: 1px solid var(--line);
     }
 
     th,
     td {
       padding: 12px 14px;
-      border-bottom: 1px solid #e5eaed;
+      border-bottom: 1px solid #e7ecef;
       text-align: right;
       white-space: nowrap;
     }
@@ -136,25 +316,47 @@
       font-size: 13px;
     }
 
-    .ok {
-      color: #087f5b;
-      font-weight: 700;
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
-    .running {
-      color: #9a6700;
-      font-weight: 700;
+    @keyframes sweep {
+      0% {
+        transform: translateX(-110%);
+      }
+      100% {
+        transform: translateX(300%);
+      }
     }
 
-    .error {
-      color: #c92a2a;
-      font-weight: 700;
+    @keyframes flowPulse {
+      0% {
+        top: 52px;
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% {
+        top: calc(100% - 26px);
+        opacity: 0;
+      }
     }
 
-    @media (max-width: 840px) {
-      header {
+    @media (max-width: 860px) {
+      header,
+      .status-row {
         align-items: flex-start;
         flex-direction: column;
+      }
+
+      .toolbar {
+        justify-content: flex-start;
       }
 
       .two,
@@ -167,12 +369,30 @@
 <body>
 <main>
   <header>
-    <div>
-      <h1>좋아요 처리 대시보드</h1>
-      <div class="muted">sync와 buffered-async의 요청, Redis, RabbitMQ, DB 상태를 확인합니다.</div>
+    <div class="header-copy">
+      <h1>좋아요 처리 테스트 대시보드</h1>
+      <div class="muted">sync와 buffered-async의 요청, Redis, RabbitMQ, DB 반영 상태를 확인합니다.</div>
     </div>
     <div class="muted" id="updated-at">대기 중</div>
   </header>
+
+  <section class="panel">
+    <div class="status-row">
+      <div>
+        <div id="load-status" class="status-text idle">실행 대기 중</div>
+        <div class="muted">대시보드에서 실행하는 테스트는 app 컨테이너 내부의 k6를 사용합니다.</div>
+      </div>
+      <div class="toolbar">
+        <button class="primary" data-mode="sync">sync 테스트 실행</button>
+        <button class="buffered" data-mode="buffered-async">buffered-async 테스트 실행</button>
+        <button class="danger" id="stop-test">테스트 중지</button>
+        <button id="reset-state">DB/Redis/Queue 초기화</button>
+      </div>
+    </div>
+    <div id="activity" class="activity">
+      <div class="activity-bar"></div>
+    </div>
+  </section>
 
   <h2>요청 요약</h2>
   <section class="grid two" id="summary-grid"></section>
@@ -182,13 +402,6 @@
 
   <h2>처리 흐름</h2>
   <section class="grid two" id="flow-grid"></section>
-
-  <h2>내장 k6 실행</h2>
-  <section class="panel">
-    <button data-mode="sync">sync 테스트 실행</button>
-    <button data-mode="buffered-async">buffered-async 테스트 실행</button>
-    <div id="load-status" class="muted">실행 대기 중</div>
-  </section>
 
   <h2>최근 k6 결과</h2>
   <table>
@@ -215,29 +428,32 @@
 
   const flowDefinitions = {
     'sync': [
-      ['request.received', '요청 수'],
+      ['request.received', '요청 수신'],
       ['db.direct.updated', 'DB 직접 업데이트'],
     ],
     'buffered-async': [
-      ['request.received', '요청 수'],
-      ['redis.dedup.added', 'Redis 신규 사용자'],
-      ['redis.dedup.duplicate', 'Redis 중복 요청'],
-      ['redis.display.incremented', 'Redis display 증가'],
-      ['redis.pending.incremented', 'Redis pending 증가'],
-      ['scheduler.flush.executed', 'Scheduler flush 횟수'],
-      ['scheduler.flush.delta', 'Scheduler flush delta 합계'],
-      ['rabbit.aggregate.published', 'RabbitMQ delta 이벤트 발행'],
-      ['consumer.aggregate.received', 'Consumer delta 이벤트 수신'],
-      ['db.aggregate.updated', 'DB delta 업데이트 합계'],
+      ['request.received', '요청 수신'],
+      ['redis.dedup.added', 'Redis 신규 사용자 기록'],
+      ['redis.dedup.duplicate', 'Redis 중복 요청 감지'],
+      ['redis.display.incremented', 'Redis 표시용 카운트 증가'],
+      ['redis.pending.incremented', 'Redis pending 카운트 증가'],
+      ['scheduler.flush.executed', 'Scheduler flush 실행'],
+      ['scheduler.flush.delta', 'Scheduler delta 합계'],
+      ['rabbit.aggregate.published', 'RabbitMQ delta 발행'],
+      ['consumer.aggregate.received', 'Consumer delta 수신'],
+      ['db.aggregate.updated', 'DB delta 업데이트'],
     ],
   };
 
   const stateDefinitions = [
     ['databaseLikeCount', 'DB like_count'],
-    ['bufferedDisplayCount', 'buffered display count'],
-    ['bufferedPendingCount', 'buffered pending count'],
-    ['aggregateQueueMessages', 'aggregate.queue 대기'],
+    ['bufferedDisplayCount', 'Redis display count'],
+    ['bufferedPendingCount', 'Redis pending count'],
+    ['aggregateQueueMessages', 'RabbitMQ 대기 메시지'],
   ];
+
+  const previousValues = new Map();
+  let currentLoadStatus = {running: false};
 
   function number(value) {
     return Number(value || 0).toLocaleString();
@@ -247,17 +463,27 @@
     return Number(value || 0).toFixed(2);
   }
 
+  function changed(key, value) {
+    const normalized = String(value ?? '');
+    const was = previousValues.get(key);
+    previousValues.set(key, normalized);
+    return was !== undefined && was !== normalized;
+  }
+
   function renderSummary(metrics) {
     const grid = document.getElementById('summary-grid');
     grid.innerHTML = '';
 
-    Object.entries(metrics).forEach(([endpoint, value]) => {
+    Object.entries(endpointLabels).forEach(([endpoint, label]) => {
+      const value = metrics[endpoint] || {};
+      const key = `summary:${endpoint}`;
+      const composite = `${value.requests}:${value.successes}:${value.failures}:${value.averageDurationMs}`;
       const item = document.createElement('div');
-      item.className = 'metric';
+      item.className = `metric ${changed(key, composite) ? 'changed' : ''}`;
       item.innerHTML = `
-        <div class="label">${endpointLabels[endpoint] || endpoint}</div>
+        <div class="label">${label}</div>
         <div class="value">${number(value.requests)}</div>
-        <div class="muted">성공 ${number(value.successes)} / 실패 ${number(value.failures)} / 평균 ${ms(value.averageDurationMs)}ms</div>
+        <div class="subvalue">성공 ${number(value.successes)} / 실패 ${number(value.failures)} / 평균 ${ms(value.averageDurationMs)}ms</div>
       `;
       grid.appendChild(item);
     });
@@ -268,11 +494,12 @@
     grid.innerHTML = '';
 
     stateDefinitions.forEach(([key, label]) => {
+      const value = state[key];
       const item = document.createElement('div');
-      item.className = 'metric';
+      item.className = `metric ${changed(`state:${key}`, value) ? 'changed' : ''}`;
       item.innerHTML = `
         <div class="label">${label}</div>
-        <div class="value">${number(state[key])}</div>
+        <div class="value">${number(value)}</div>
       `;
       grid.appendChild(item);
     });
@@ -284,15 +511,18 @@
 
     Object.entries(flowDefinitions).forEach(([mode, steps]) => {
       const panel = document.createElement('div');
-      panel.className = 'panel flow-column';
+      const isRunningMode = currentLoadStatus.running && currentLoadStatus.mode === mode;
+      panel.className = `panel flow-column ${mode} ${isRunningMode ? 'running' : ''}`;
       panel.innerHTML = `<h3>${endpointLabels[mode]}</h3>`;
 
       steps.forEach(([key, label]) => {
+        const value = (flow[mode] || {})[key] || 0;
+        const didChange = changed(`flow:${mode}:${key}`, value);
         const step = document.createElement('div');
-        step.className = 'step';
+        step.className = `step ${didChange ? 'active' : ''}`;
         step.innerHTML = `
           <div class="label">${label}</div>
-          <div class="value">${number((flow[mode] || {})[key])}</div>
+          <div class="value">${number(value)}</div>
         `;
         panel.appendChild(step);
       });
@@ -302,30 +532,39 @@
   }
 
   function renderLoadStatus(status) {
+    currentLoadStatus = status || {running: false};
     const target = document.getElementById('load-status');
-    document.querySelectorAll('button[data-mode]').forEach((button) => {
+    const activity = document.getElementById('activity');
+    const startButtons = document.querySelectorAll('button[data-mode]');
+    const stopButton = document.getElementById('stop-test');
+    const resetButton = document.getElementById('reset-state');
+
+    startButtons.forEach((button) => {
       button.disabled = Boolean(status.running);
     });
+    stopButton.disabled = !status.running;
+    resetButton.disabled = Boolean(status.running);
+    activity.classList.toggle('running', Boolean(status.running));
 
     if (status.running) {
-      target.className = 'running';
-      target.textContent = `${status.mode} 테스트 실행 중`;
+      target.className = 'status-text running';
+      target.innerHTML = `<span class="spinner"></span>${status.mode} 테스트 실행 중`;
       return;
     }
 
     if (status.errorMessage) {
-      target.className = 'error';
+      target.className = status.stopped ? 'status-text ok' : 'status-text error';
       target.textContent = status.errorMessage;
       return;
     }
 
     if (status.mode) {
-      target.className = status.exitCode === 0 ? 'ok' : 'error';
+      target.className = status.exitCode === 0 ? 'status-text ok' : 'status-text error';
       target.textContent = `${status.mode} 테스트 종료, exitCode=${status.exitCode}`;
       return;
     }
 
-    target.className = 'muted';
+    target.className = 'status-text idle';
     target.textContent = '실행 대기 중';
   }
 
@@ -349,33 +588,56 @@
   }
 
   async function loadDashboard() {
-    const [metricsResponse, flowResponse, stateResponse, loadStatusResponse, latestResultResponse] = await Promise.all([
+    const [loadStatusResponse, metricsResponse, flowResponse, stateResponse, latestResultResponse] = await Promise.all([
+      fetch('/api/v1/load-tests/current'),
       fetch('/api/v1/like/metrics'),
       fetch('/api/v1/like/flow-metrics'),
       fetch('/api/v1/like/system-state?videoId=1'),
-      fetch('/api/v1/load-tests/current'),
       fetch('/api/v1/load-tests/results/latest'),
     ]);
 
+    renderLoadStatus(await loadStatusResponse.json());
     renderSummary(await metricsResponse.json());
     renderFlow(await flowResponse.json());
     renderState(await stateResponse.json());
-    renderLoadStatus(await loadStatusResponse.json());
     renderK6Result(await latestResultResponse.json());
 
     document.getElementById('updated-at').textContent =
       `마지막 갱신: ${new Date().toLocaleTimeString()}`;
   }
 
+  async function postJson(url, body) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+    return response.json();
+  }
+
   document.querySelectorAll('button[data-mode]').forEach((button) => {
     button.addEventListener('click', async () => {
-      await fetch('/api/v1/load-tests/start', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({mode: button.dataset.mode}),
-      });
+      await postJson('/api/v1/load-tests/start', {mode: button.dataset.mode});
       await loadDashboard();
     });
+  });
+
+  document.getElementById('stop-test').addEventListener('click', async () => {
+    await postJson('/api/v1/load-tests/stop');
+    await loadDashboard();
+  });
+
+  document.getElementById('reset-state').addEventListener('click', async () => {
+    const confirmed = window.confirm('video.id=1의 DB 값, Redis 카운트, RabbitMQ 대기 메시지, 대시보드 메트릭을 초기화할까요?');
+    if (!confirmed) {
+      return;
+    }
+    await postJson('/api/v1/like/test-state/reset?videoId=1');
+    previousValues.clear();
+    await loadDashboard();
   });
 
   loadDashboard();
