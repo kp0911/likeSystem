@@ -78,6 +78,8 @@ This dashboard shows request count, success count, failure count, average respon
 
 When the project is started with `docker compose up --build -d`, the app container includes k6, so the dashboard can start load tests directly.
 
+If Docker startup fails in another environment, see `docs/docker-troubleshooting.md`.
+
 ## Reset Test State
 
 Run this after the app has started and RabbitMQ has declared `like.aggregate.queue`.
