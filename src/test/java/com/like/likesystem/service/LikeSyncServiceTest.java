@@ -11,8 +11,13 @@ import static org.mockito.Mockito.when;
 class LikeSyncServiceTest {
 
     private final VideoRepository videoRepository = mock(VideoRepository.class);
+    private final LikeDisplayCountService likeDisplayCountService = mock(LikeDisplayCountService.class);
     private final LikeFlowMetricsService likeFlowMetricsService = mock(LikeFlowMetricsService.class);
-    private final LikeSyncService likeSyncService = new LikeSyncService(videoRepository, likeFlowMetricsService);
+    private final LikeSyncService likeSyncService = new LikeSyncService(
+            videoRepository,
+            likeDisplayCountService,
+            likeFlowMetricsService
+    );
 
     @Test
     void processLikeAtomicallyIncrementsLikeCount() {
@@ -21,6 +26,7 @@ class LikeSyncServiceTest {
         likeSyncService.processLike(1L);
 
         verify(videoRepository).incrementLikeCountBy(1L, 1L);
+        verify(likeDisplayCountService).incrementIfInitialized(1L);
     }
 
     @Test

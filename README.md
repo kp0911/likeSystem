@@ -74,11 +74,13 @@ Test dashboard:
 http://localhost:8080/like-test-dashboard.html
 ```
 
-This dashboard shows request count, success count, failure count, average response time, Redis counts, RabbitMQ queue depth, database count, and step-by-step flow metrics for `sync` and `buffered-async`.
+This dashboard shows request count, success count, failure count, average response time, Redis counts, RabbitMQ queue depth, database count, and step-by-step flow metrics for `sync` and `buffered-async`. Redis display count is initialized from the current DB count and represents the total count shown to users.
 
 When the project is started with `docker compose up --build -d`, the app container includes k6, so the dashboard can start load tests directly.
 
 If Docker startup fails in another environment, see `docs/docker-troubleshooting.md`.
+
+Load test models and dashboard monitoring details are documented in `docs/load-test-monitoring.md`.
 
 ## Reset Test State
 
@@ -88,11 +90,11 @@ Run this after the app has started and RabbitMQ has declared `like.aggregate.que
 .\scripts\reset-test-state.ps1
 ```
 
-This resets `video.id = 1`, clears Redis keys, and purges `like.aggregate.queue`.
+This resets `video.id = 1`, clears Redis keys, deletes processed event IDs, and purges `like.aggregate.queue`.
 
 ## Performance Comparison With k6
 
-Two k6 scripts are provided so the endpoint does not need to be edited between runs.
+Two load models are provided: sustained concurrent load and burst load. Each model has a script for `sync` and `buffered-async`.
 
 Synchronous endpoint:
 
@@ -106,6 +108,20 @@ Buffered asynchronous endpoint:
 k6 run load-test-buffered-async.js
 ```
 
+Burst sync endpoint:
+
+```powershell
+k6 run load-test-burst-sync.js
+```
+
+Burst buffered asynchronous endpoint:
+
+```powershell
+k6 run load-test-burst-buffered-async.js
+```
+
+The dashboard separates sustained and burst controls, refreshes monitoring data every second, and keeps the latest k6 result after a short burst has completed.
+
 Use the same test sequence for a fair comparison:
 
 1. Start Docker containers.
@@ -117,6 +133,8 @@ Use the same test sequence for a fair comparison:
 7. Run `k6 run load-test-buffered-async.js`.
 8. Watch RabbitMQ `like.aggregate.queue` until `Ready` returns to `0`.
 9. Check `video.like_count` again.
+
+For a burst comparison, replace steps 4 and 7 with the matching `load-test-burst-*.js` command. Reset before every test because the buffered endpoint intentionally rejects a duplicate user during its deduplication TTL.
 
 Important k6 metrics:
 
@@ -131,6 +149,8 @@ Important k6 metrics:
 For `/sync`, the HTTP response includes one atomic database update: `like_count = like_count + 1`. It avoids lost updates, but every request still waits for a database write.
 
 For `/buffered-async`, the HTTP response validates the video and atomically updates Redis. A scheduler moves pending counts to a Redis outbox, publishes aggregate delta events only after RabbitMQ broker confirmation, and the consumer applies `like_count += delta` to the database once per event ID.
+
+Each user deduplication key has a configurable TTL. The default is 30 days (`like.buffered.user-dedup-ttl-seconds=2592000`), which bounds Redis memory usage and allows `volatile-lru` to evict only temporary deduplication keys under memory pressure. After this TTL, the same user can submit another like; permanent duplicate prevention requires a separately persisted user-like relationship.
 
 - `Ready`: messages waiting to be consumed
 - `Unacked`: messages currently handled by consumers

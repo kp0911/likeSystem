@@ -16,13 +16,15 @@ public class LikeSystemStateService {
     private final StringRedisTemplate redisTemplate;
     private final VideoRepository videoRepository;
     private final RabbitAdmin rabbitAdmin;
+    private final LikeDisplayCountService likeDisplayCountService;
 
     public LikeSystemStateSnapshot snapshot(Long videoId) {
+        long databaseLikeCount = videoRepository.findById(videoId).map(Video::getLikeCount).orElse(0L);
         return new LikeSystemStateSnapshot(
                 videoId,
-                readLong(LikeBufferedAsyncService.DISPLAY_COUNT_KEY_PREFIX + videoId),
+                likeDisplayCountService.readOrDefault(videoId, databaseLikeCount),
                 readLong(LikeBufferedAsyncService.PENDING_COUNT_KEY_PREFIX + videoId),
-                videoRepository.findById(videoId).map(Video::getLikeCount).orElse(0L),
+                databaseLikeCount,
                 queueMessages("like.aggregate.queue")
         );
     }

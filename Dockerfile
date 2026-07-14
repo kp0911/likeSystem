@@ -14,7 +14,7 @@ WORKDIR /app
 
 COPY --from=builder /workspace/build/libs/*.jar app.jar
 COPY --from=k6 /usr/bin/k6 /usr/local/bin/k6
-COPY load-test-sync.js load-test-buffered-async.js ./
+COPY load-test-sync.js load-test-buffered-async.js load-test-burst-sync.js load-test-burst-buffered-async.js ./
 
 EXPOSE 8080
 

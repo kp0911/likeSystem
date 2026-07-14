@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
@@ -16,7 +17,9 @@ public class LoadTestRunnerService {
     private static final Path RESULT_DIR = Path.of("build", "k6-results");
     private static final Map<String, LoadTestDefinition> DEFINITIONS = Map.of(
             "sync", new LoadTestDefinition("sync", "load-test-sync.js", RESULT_DIR.resolve("sync-latest.json")),
-            "buffered-async", new LoadTestDefinition("buffered-async", "load-test-buffered-async.js", RESULT_DIR.resolve("buffered-async-latest.json"))
+            "buffered-async", new LoadTestDefinition("buffered-async", "load-test-buffered-async.js", RESULT_DIR.resolve("buffered-async-latest.json")),
+            "burst-sync", new LoadTestDefinition("burst-sync", "load-test-burst-sync.js", RESULT_DIR.resolve("burst-sync-latest.json")),
+            "burst-buffered-async", new LoadTestDefinition("burst-buffered-async", "load-test-burst-buffered-async.js", RESULT_DIR.resolve("burst-buffered-async-latest.json"))
     );
 
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -24,6 +27,10 @@ public class LoadTestRunnerService {
     private volatile String latestMode;
     private volatile Process currentProcess;
     private volatile boolean stopRequested;
+
+    static Set<String> supportedModes() {
+        return DEFINITIONS.keySet();
+    }
 
     public LoadTestStatus start(String mode) {
         LoadTestDefinition definition = DEFINITIONS.get(mode);

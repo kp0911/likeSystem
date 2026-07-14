@@ -84,4 +84,14 @@ class LikeControllerTest {
 
         verifyNoInteractions(likeBufferedAsyncService);
     }
+
+    @Test
+    void likeBufferedAsyncRejectsOversizedUserId() throws Exception {
+        mockMvc.perform(post("/api/v1/like/buffered-async")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"videoId\":1,\"userId\":\"" + "a".repeat(101) + "\"}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(likeBufferedAsyncService);
+    }
 }

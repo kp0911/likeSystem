@@ -27,7 +27,7 @@
 | Application | Java 21, Spring Boot | REST API 및 비즈니스 로직 구현 |
 | Database | MariaDB | 최종 좋아요 수 저장 |
 | ORM | Spring Data JPA, Hibernate | `Video` 엔티티 저장 및 조회 |
-| Cache / Buffer | Redis | 중복 좋아요 방지, 즉각 피드백용 카운트, DB 반영 대기 카운트 저장 |
+| Cache / Buffer | Redis | TTL 기반 사용자 중복 방지, 전체 표시 카운트, DB 반영 대기 카운트 저장 |
 | Message Queue | RabbitMQ | 버퍼 비동기 delta 이벤트 전달 |
 | Load Test | k6 | API 성능 측정 |
 | Runtime | Docker Compose | App, MariaDB, Redis, RabbitMQ 전체 실행 |
@@ -50,14 +50,14 @@ Client
 
 ### 3.2 버퍼 비동기 처리
 
-버퍼 비동기 방식은 사용자가 좋아요를 누르면 Redis에 먼저 누적한다. 요청 시점에는 DB를 업데이트하지 않고, RabbitMQ에도 직접 메시지를 보내지 않는다. Redis Lua 스크립트가 중복 기록과 두 카운트 증가를 원자적으로 처리한다. Scheduler는 pending count를 Redis outbox로 옮긴 뒤 RabbitMQ broker confirm을 받은 이벤트만 outbox에서 제거하고, Consumer가 DB에 `like_count += delta`로 반영한다.
+버퍼 비동기 방식은 사용자가 좋아요를 누르면 Redis에 먼저 누적한다. 요청 시점에는 DB를 업데이트하지 않고, RabbitMQ에도 직접 메시지를 보내지 않는다. Redis Lua 스크립트가 TTL 기반 사용자 중복 기록과 두 카운트 증가를 원자적으로 처리한다. display count는 처음 사용할 때 DB `like_count`를 기준값으로 초기화하므로 사용자에게 전체 좋아요 수를 보여줄 수 있다. Scheduler는 pending count를 Redis outbox로 옮긴 뒤 RabbitMQ broker confirm을 받은 이벤트만 outbox에서 제거하고, Consumer가 DB에 `like_count += delta`로 반영한다.
 
 ```text
 Client
   -> /api/v1/like/buffered-async
   -> Redis 영상 존재 여부 확인
-  -> Redis Set 중복 체크
-  -> Redis display count + 1
+  -> Redis 사용자별 TTL 키 중복 체크
+  -> Redis 전체 display count + 1
   -> Redis pending count + 1
   -> HTTP 200 응답
 
@@ -74,6 +74,8 @@ Consumer
 ```
 
 이 방식은 좋아요 10,000건이 짧은 시간에 발생해도 DB update를 10,000번 실행하지 않고, 일정 시간 동안 모인 delta를 기준으로 적은 횟수의 update로 반영할 수 있다.
+
+사용자별 중복 키는 기본 30일 TTL을 적용한다. 이 키는 `volatile-lru` 정책의 eviction 대상이므로 메모리 압박 시 중요 카운트나 outbox가 아니라 오래된 중복 방지 키부터 정리된다. TTL이 지난 사용자는 다시 좋아요 요청을 보낼 수 있으므로, 영구 중복 방지가 요구되는 서비스라면 별도의 사용자-좋아요 영속 저장소가 필요하다.
 
 ## 4. 테스트 환경과 조건
 
@@ -188,7 +190,8 @@ docker exec -it mariadb-container mariadb -u db_user -pdb_password like_system -
 
 - DB 직접 update 방식은 단순하지만 요청 수가 많아지면 DB 부하가 커진다.
 - sync 방식은 원자적 증가 쿼리로 lost update를 막지만, 요청 수만큼 DB write가 발생한다.
-- Redis는 중복 좋아요 방지뿐 아니라 사용자에게 즉각적인 좋아요 수 증가를 보여주기 위한 임시 카운터로 사용할 수 있다.
+- Redis display count는 DB 기준값에서 시작하는 전체 표시용 캐시이므로 사용자에게 즉각적인 좋아요 수 증가를 보여줄 수 있다.
+- Redis 사용자 중복 키는 TTL을 적용해 메모리 사용량을 시간 범위로 제한하고, `volatile-lru`가 실제로 동작할 수 있게 한다.
 - Redis Lua script는 중복 기록과 카운트 증가가 부분 성공으로 어긋나는 문제를 막는다.
 - Redis outbox와 RabbitMQ broker confirm은 발행 실패 시 delta 유실을 막는다.
 - RabbitMQ Consumer는 DB 커밋 뒤 자동 ACK하고 eventId를 저장해 재전달을 중복 반영하지 않는다.

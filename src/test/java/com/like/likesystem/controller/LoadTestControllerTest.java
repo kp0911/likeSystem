@@ -36,6 +36,18 @@ class LoadTestControllerTest {
     }
 
     @Test
+    void startReturnsAcceptedForBurstMode() throws Exception {
+        when(loadTestRunnerService.start("burst-sync")).thenReturn(
+                new LoadTestRunnerService.LoadTestStatus(true, "burst-sync", Instant.now(), null, null, false)
+        );
+
+        mockMvc.perform(post("/api/v1/load-tests/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mode\":\"burst-sync\"}"))
+                .andExpect(status().isAccepted());
+    }
+
+    @Test
     void startRejectsBlankMode() throws Exception {
         mockMvc.perform(post("/api/v1/load-tests/start")
                         .contentType(MediaType.APPLICATION_JSON)

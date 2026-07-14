@@ -20,8 +20,14 @@ class LikeSystemStateServiceTest {
     private final StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
     private final VideoRepository videoRepository = mock(VideoRepository.class);
     private final RabbitAdmin rabbitAdmin = mock(RabbitAdmin.class);
+    private final LikeDisplayCountService likeDisplayCountService = mock(LikeDisplayCountService.class);
     private final ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
-    private final LikeSystemStateService service = new LikeSystemStateService(redisTemplate, videoRepository, rabbitAdmin);
+    private final LikeSystemStateService service = new LikeSystemStateService(
+            redisTemplate,
+            videoRepository,
+            rabbitAdmin,
+            likeDisplayCountService
+    );
 
     @Test
     void combinesRedisRabbitAndDatabaseState() {
@@ -31,9 +37,9 @@ class LikeSystemStateServiceTest {
         aggregateQueueProperties.put(RabbitAdmin.QUEUE_MESSAGE_COUNT, 2);
 
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("like:buffered:display:video:1")).thenReturn("7");
         when(valueOperations.get("like:buffered:pending:video:1")).thenReturn("4");
         when(videoRepository.findById(1L)).thenReturn(Optional.of(video));
+        when(likeDisplayCountService.readOrDefault(1L, 1L)).thenReturn(7L);
         when(rabbitAdmin.getQueueProperties("like.aggregate.queue")).thenReturn(aggregateQueueProperties);
 
         LikeSystemStateService.LikeSystemStateSnapshot snapshot = service.snapshot(1L);

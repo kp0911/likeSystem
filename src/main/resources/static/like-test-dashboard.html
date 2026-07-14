@@ -80,6 +80,46 @@
       gap: 8px;
     }
 
+    .test-groups {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      width: min(100%, 620px);
+    }
+
+    .test-group {
+      display: grid;
+      gap: 7px;
+      padding-left: 10px;
+      border-left: 3px solid var(--line);
+    }
+
+    .test-group.sustained {
+      border-left-color: var(--sync);
+    }
+
+    .test-group.burst {
+      border-left-color: var(--warn);
+    }
+
+    .test-group-label {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .test-group-label span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    .group-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
     button {
       min-height: 38px;
       border: 1px solid #9fb1bc;
@@ -100,6 +140,12 @@
     button.buffered {
       border-color: #0f766e;
       background: #0f766e;
+      color: #ffffff;
+    }
+
+    button.burst {
+      border-color: #b45309;
+      background: #b45309;
       color: #ffffff;
     }
 
@@ -359,6 +405,10 @@
         justify-content: flex-start;
       }
 
+      .test-groups {
+        grid-template-columns: 1fr;
+      }
+
       .two,
       .four {
         grid-template-columns: 1fr;
@@ -380,11 +430,25 @@
     <div class="status-row">
       <div>
         <div id="load-status" class="status-text idle">실행 대기 중</div>
-        <div class="muted">대시보드에서 실행하는 테스트는 app 컨테이너 내부의 k6를 사용합니다.</div>
+        <div id="load-plan" class="muted">대시보드에서 실행하는 테스트는 app 컨테이너 내부의 k6를 사용합니다.</div>
       </div>
       <div class="toolbar">
-        <button class="primary" data-mode="sync">sync 테스트 실행</button>
-        <button class="buffered" data-mode="buffered-async">buffered-async 테스트 실행</button>
+        <div class="test-groups">
+          <div class="test-group sustained">
+            <div class="test-group-label">지속 동시 부하 <span>500 VU · 5분 반복 요청</span></div>
+            <div class="group-actions">
+              <button class="primary" data-mode="sync">sync 실행</button>
+              <button class="buffered" data-mode="buffered-async">buffered 실행</button>
+            </div>
+          </div>
+          <div class="test-group burst">
+            <div class="test-group-label">순간 버스트 부하 <span>500 VU · VU당 1회 요청</span></div>
+            <div class="group-actions">
+              <button class="burst" data-mode="burst-sync">sync 실행</button>
+              <button class="burst" data-mode="burst-buffered-async">buffered 실행</button>
+            </div>
+          </div>
+        </div>
         <button class="danger" id="stop-test">테스트 중지</button>
         <button id="reset-state">DB/Redis/Queue 초기화</button>
       </div>
@@ -424,6 +488,29 @@
   const endpointLabels = {
     'sync': 'sync - DB 직접 반영',
     'buffered-async': 'buffered-async - Redis 누적 후 일괄 반영',
+  };
+
+  const loadTestDefinitions = {
+    'sync': {
+      label: '지속 sync',
+      endpoint: 'sync',
+      plan: '지속 동시 부하: 500 VU가 5분 동안 요청과 0.1초 대기를 반복합니다.',
+    },
+    'buffered-async': {
+      label: '지속 buffered-async',
+      endpoint: 'buffered-async',
+      plan: '지속 동시 부하: 500 VU가 5분 동안 요청과 0.1초 대기를 반복합니다.',
+    },
+    'burst-sync': {
+      label: '순간 버스트 sync',
+      endpoint: 'sync',
+      plan: '순간 버스트: 500 VU가 대기 없이 요청을 한 번씩 집중 전송합니다.',
+    },
+    'burst-buffered-async': {
+      label: '순간 버스트 buffered-async',
+      endpoint: 'buffered-async',
+      plan: '순간 버스트: 500 VU가 대기 없이 요청을 한 번씩 집중 전송합니다.',
+    },
   };
 
   const flowDefinitions = {
@@ -511,7 +598,8 @@
 
     Object.entries(flowDefinitions).forEach(([mode, steps]) => {
       const panel = document.createElement('div');
-      const isRunningMode = currentLoadStatus.running && currentLoadStatus.mode === mode;
+      const runningDefinition = loadTestDefinitions[currentLoadStatus.mode];
+      const isRunningMode = currentLoadStatus.running && runningDefinition?.endpoint === mode;
       panel.className = `panel flow-column ${mode} ${isRunningMode ? 'running' : ''}`;
       panel.innerHTML = `<h3>${endpointLabels[mode]}</h3>`;
 
@@ -538,6 +626,8 @@
     const startButtons = document.querySelectorAll('button[data-mode]');
     const stopButton = document.getElementById('stop-test');
     const resetButton = document.getElementById('reset-state');
+    const planTarget = document.getElementById('load-plan');
+    const definition = loadTestDefinitions[status.mode];
 
     startButtons.forEach((button) => {
       button.disabled = Boolean(status.running);
@@ -545,10 +635,13 @@
     stopButton.disabled = !status.running;
     resetButton.disabled = Boolean(status.running);
     activity.classList.toggle('running', Boolean(status.running));
+    planTarget.textContent = definition
+      ? definition.plan
+      : '대시보드에서 실행하는 테스트는 app 컨테이너 내부의 k6를 사용합니다.';
 
     if (status.running) {
       target.className = 'status-text running';
-      target.innerHTML = `<span class="spinner"></span>${status.mode} 테스트 실행 중`;
+      target.innerHTML = `<span class="spinner"></span>${definition?.label || status.mode} 테스트 실행 중`;
       return;
     }
 
@@ -560,7 +653,7 @@
 
     if (status.mode) {
       target.className = status.exitCode === 0 ? 'status-text ok' : 'status-text error';
-      target.textContent = `${status.mode} 테스트 종료, exitCode=${status.exitCode}`;
+      target.textContent = `${definition?.label || status.mode} 테스트 종료, exitCode=${status.exitCode}`;
       return;
     }
 
@@ -641,7 +734,7 @@
   });
 
   loadDashboard();
-  setInterval(loadDashboard, 3000);
+  setInterval(loadDashboard, 1000);
 </script>
 </body>
 </html>
