@@ -3,14 +3,13 @@ package com.like.likesystem.service;
 import com.like.likesystem.event.LikeCountDeltaEvent;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,40 +19,50 @@ import static org.mockito.Mockito.when;
 class LikeBufferedCountFlushServiceTest {
 
     private final StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
-    private final RabbitTemplate rabbitTemplate = mock(RabbitTemplate.class);
+    private final LikeAggregateEventPublisher eventPublisher = mock(LikeAggregateEventPublisher.class);
     private final LikeFlowMetricsService likeFlowMetricsService = mock(LikeFlowMetricsService.class);
-    private final ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
-    private final LikeBufferedCountFlushService flushService = new LikeBufferedCountFlushService(redisTemplate, rabbitTemplate, likeFlowMetricsService);
+    private final LikeBufferedCountFlushService flushService = new LikeBufferedCountFlushService(
+            redisTemplate,
+            eventPublisher,
+            likeFlowMetricsService
+    );
 
     @Test
-    void flushPendingCountPublishesAggregateEventAndResetsCount() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.getAndSet("like:buffered:pending:video:1", "0")).thenReturn("100");
+    void flushPendingCountMovesDeltaToOutboxThenPublishesIt() {
+        when(redisTemplate.execute(any(), anyList(), any())).thenReturn(100L);
+        when(eventPublisher.publish(any())).thenReturn(true);
 
         Optional<LikeCountDeltaEvent> event = flushService.flushPendingCount("like:buffered:pending:video:1");
 
         assertThat(event).isPresent();
         assertThat(event.get().getVideoId()).isEqualTo(1L);
         assertThat(event.get().getDelta()).isEqualTo(100L);
+        assertThat(event.get().getEventId()).isNotBlank();
 
         ArgumentCaptor<LikeCountDeltaEvent> eventCaptor = ArgumentCaptor.forClass(LikeCountDeltaEvent.class);
-        verify(rabbitTemplate).convertAndSend(eq("like.exchange"), eq("like.aggregate.routing.key"), eventCaptor.capture());
+        verify(eventPublisher).publish(eventCaptor.capture());
         assertThat(eventCaptor.getValue().getVideoId()).isEqualTo(1L);
         assertThat(eventCaptor.getValue().getDelta()).isEqualTo(100L);
+        verify(redisTemplate).delete(org.mockito.ArgumentMatchers.startsWith(LikeBufferedCountFlushService.OUTBOX_KEY_PREFIX));
     }
 
     @Test
     void flushPendingCountDoesNotPublishWhenCountIsZero() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.getAndSet("like:buffered:pending:video:1", "0")).thenReturn("0");
+        when(redisTemplate.execute(any(), anyList(), any())).thenReturn(0L);
 
         Optional<LikeCountDeltaEvent> event = flushService.flushPendingCount("like:buffered:pending:video:1");
 
         assertThat(event).isEmpty();
-        verify(rabbitTemplate, never()).convertAndSend(
-                eq("like.exchange"),
-                eq("like.aggregate.routing.key"),
-                org.mockito.ArgumentMatchers.any(LikeCountDeltaEvent.class)
-        );
+        verify(eventPublisher, never()).publish(any());
+    }
+
+    @Test
+    void flushPendingCountKeepsOutboxWhenBrokerPublishFails() {
+        when(redisTemplate.execute(any(), anyList(), any())).thenReturn(100L);
+        when(eventPublisher.publish(any())).thenReturn(false);
+
+        flushService.flushPendingCount("like:buffered:pending:video:1");
+
+        verify(redisTemplate, never()).delete(org.mockito.ArgumentMatchers.startsWith(LikeBufferedCountFlushService.OUTBOX_KEY_PREFIX));
     }
 }

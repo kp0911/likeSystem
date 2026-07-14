@@ -1,6 +1,7 @@
 package com.like.likesystem.service;
 
 import com.like.likesystem.repository.VideoRepository;
+import com.like.likesystem.repository.ProcessedLikeEventRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -17,6 +18,7 @@ public class LikeTestStateResetService {
 
     private final StringRedisTemplate redisTemplate;
     private final VideoRepository videoRepository;
+    private final ProcessedLikeEventRepository processedLikeEventRepository;
     private final RabbitAdmin rabbitAdmin;
     private final LikeMetricsService likeMetricsService;
     private final LikeFlowMetricsService likeFlowMetricsService;
@@ -24,12 +26,14 @@ public class LikeTestStateResetService {
     @Transactional
     public ResetResult reset(Long videoId) {
         int updatedRows = videoRepository.resetLikeCount(videoId, 0L);
+        long deletedProcessedEvents = processedLikeEventRepository.count();
+        processedLikeEventRepository.deleteAllInBatch();
         long deletedRedisKeys = deleteBufferedKeys(videoId);
         rabbitAdmin.purgeQueue(AGGREGATE_QUEUE, true);
         likeMetricsService.reset();
         likeFlowMetricsService.reset();
 
-        return new ResetResult(videoId, updatedRows, deletedRedisKeys, AGGREGATE_QUEUE);
+        return new ResetResult(videoId, updatedRows, deletedProcessedEvents, deletedRedisKeys, AGGREGATE_QUEUE);
     }
 
     private long deleteBufferedKeys(Long videoId) {
@@ -45,6 +49,7 @@ public class LikeTestStateResetService {
     public record ResetResult(
             Long videoId,
             int updatedDatabaseRows,
+            long deletedProcessedEvents,
             long deletedRedisKeys,
             String purgedQueue
     ) {

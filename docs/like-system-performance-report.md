@@ -15,7 +15,7 @@
 
 | 구분 | API | 처리 방식 | 핵심 특징 |
 | --- | --- | --- | --- |
-| 동기 처리 | `/api/v1/like/sync` | DB에 직접 read-modify-write | 구조가 단순하지만 동시성 환경에서 lost update 가능성이 있음 |
+| 동기 처리 | `/api/v1/like/sync` | DB에 직접 원자적 증가 쿼리 실행 | 정합성을 유지하지만 요청마다 DB write가 발생 |
 | 버퍼 비동기 처리 | `/api/v1/like/buffered-async` | Redis에 누적 후 RabbitMQ delta 이벤트로 DB 일괄 반영 | 요청 응답이 빠르고 DB update 횟수를 줄일 수 있음 |
 
 기존 개별 이벤트 기반 async 방식은 좋아요 1건당 RabbitMQ 메시지 1개와 DB update 1회를 발생시키므로, “대규모 트래픽에서 DB update 횟수를 줄인다”는 프로젝트 목적과 맞지 않아 제거했다.
@@ -36,40 +36,41 @@
 
 ### 3.1 동기 처리
 
-동기 방식은 요청이 들어오면 DB에서 `Video`를 조회한 뒤 `like_count`를 1 증가시킨다. 현재는 동일 조건 비교를 위해 비관적 락을 사용하지 않는다.
+동기 방식은 요청이 들어오면 DB에서 `like_count = like_count + 1` 원자적 증가 쿼리를 실행한다. 비관적 락은 사용하지 않지만, 하나의 SQL update로 증가하므로 동시에 요청이 들어와도 lost update가 발생하지 않는다.
 
 ```text
 Client
   -> /api/v1/like/sync
   -> Spring Boot
-  -> MariaDB findById
-  -> like_count + 1
+  -> MariaDB UPDATE like_count = like_count + 1
   -> HTTP 200 응답
 ```
 
-장점은 구조가 단순하고 이해하기 쉽다는 점이다. 단점은 여러 요청이 같은 row를 동시에 읽고 수정하면 일부 증가분이 유실될 수 있다는 점이다. 이 방식은 성능은 비교할 수 있지만, 고동시성 상황에서 정확한 최종 좋아요 수를 보장하기 어렵다.
+장점은 구조가 단순하고 최종 좋아요 수를 원자적으로 증가시킨다는 점이다. 단점은 모든 요청이 DB write와 row lock 경합을 직접 통과해야 한다는 점이다.
 
 ### 3.2 버퍼 비동기 처리
 
-버퍼 비동기 방식은 사용자가 좋아요를 누르면 Redis에 먼저 누적한다. 요청 시점에는 DB를 업데이트하지 않고, RabbitMQ에도 직접 메시지를 보내지 않는다. 별도 Scheduler가 일정 주기마다 Redis pending count를 읽어 RabbitMQ에 `LikeCountDeltaEvent`를 발행하고, Consumer가 DB에 `like_count += delta`로 반영한다.
+버퍼 비동기 방식은 사용자가 좋아요를 누르면 Redis에 먼저 누적한다. 요청 시점에는 DB를 업데이트하지 않고, RabbitMQ에도 직접 메시지를 보내지 않는다. Redis Lua 스크립트가 중복 기록과 두 카운트 증가를 원자적으로 처리한다. Scheduler는 pending count를 Redis outbox로 옮긴 뒤 RabbitMQ broker confirm을 받은 이벤트만 outbox에서 제거하고, Consumer가 DB에 `like_count += delta`로 반영한다.
 
 ```text
 Client
   -> /api/v1/like/buffered-async
+  -> Redis 영상 존재 여부 확인
   -> Redis Set 중복 체크
   -> Redis display count + 1
   -> Redis pending count + 1
   -> HTTP 200 응답
 
 Scheduler
-  -> Redis pending count 읽기
-  -> pending count 0으로 초기화
-  -> RabbitMQ LikeCountDeltaEvent(videoId, delta) 발행
+  -> Redis pending count를 outbox event로 원자적 이동
+  -> RabbitMQ LikeCountDeltaEvent(eventId, videoId, delta) 발행
+  -> broker confirm 성공 시 outbox event 삭제
 
 Consumer
   -> LikeCountDeltaEvent 소비
-  -> MariaDB like_count += delta
-  -> ACK
+  -> eventId 중복 여부 확인
+  -> MariaDB like_count += delta 및 eventId 저장
+  -> DB 커밋 성공 후 자동 ACK
 ```
 
 이 방식은 좋아요 10,000건이 짧은 시간에 발생해도 DB update를 10,000번 실행하지 않고, 일정 시간 동안 모인 delta를 기준으로 적은 횟수의 update로 반영할 수 있다.
@@ -151,9 +152,9 @@ k6 run load-test-buffered-async.js
 
 ### 6.2 정합성 관점
 
-동기 방식은 비관적 락을 제거했기 때문에 높은 동시성에서는 lost update가 발생할 수 있다. 즉, HTTP 요청은 성공했더라도 최종 DB `like_count`가 요청 수보다 작을 수 있다.
+동기 방식은 비관적 락 없이도 DB의 원자적 증가 쿼리를 사용하므로 lost update를 방지한다. 다만 모든 성공 요청이 DB write를 수행하므로 높은 동시성에서는 응답 시간이 증가할 수 있다.
 
-버퍼 비동기 방식은 최종적 일관성을 전제로 한다. 요청 직후 DB 값은 아직 반영되지 않았을 수 있지만, Scheduler와 Consumer가 처리하면 DB 값이 Redis pending delta만큼 수렴한다.
+버퍼 비동기 방식은 최종적 일관성을 전제로 한다. 요청 직후 DB 값은 아직 반영되지 않았을 수 있지만, Scheduler와 Consumer가 처리하면 DB 값이 Redis pending delta만큼 수렴한다. RabbitMQ 발행 실패 시 outbox를 남기고 재시도하며, 재전달된 eventId는 DB에 한 번만 반영한다.
 
 ## 7. 결론
 
@@ -186,9 +187,10 @@ docker exec -it mariadb-container mariadb -u db_user -pdb_password like_system -
 ## 9. 학습 포인트
 
 - DB 직접 update 방식은 단순하지만 요청 수가 많아지면 DB 부하가 커진다.
-- 비관적 락을 제거한 sync 방식은 성능 비교에는 단순하지만, 높은 동시성에서 lost update 가능성이 있다.
+- sync 방식은 원자적 증가 쿼리로 lost update를 막지만, 요청 수만큼 DB write가 발생한다.
 - Redis는 중복 좋아요 방지뿐 아니라 사용자에게 즉각적인 좋아요 수 증가를 보여주기 위한 임시 카운터로 사용할 수 있다.
-- RabbitMQ는 DB 반영 작업을 요청 경로 밖으로 분리하고, delta 이벤트를 안정적으로 전달하는 역할을 한다.
+- Redis Lua script는 중복 기록과 카운트 증가가 부분 성공으로 어긋나는 문제를 막는다.
+- Redis outbox와 RabbitMQ broker confirm은 발행 실패 시 delta 유실을 막는다.
+- RabbitMQ Consumer는 DB 커밋 뒤 자동 ACK하고 eventId를 저장해 재전달을 중복 반영하지 않는다.
 - 대규모 트래픽에서 중요한 것은 단순히 비동기화하는 것이 아니라 DB update 횟수를 줄이는 것이다.
 - 버퍼 비동기 구조는 최종적 일관성을 전제로 한다. 사용자는 빠른 응답을 받고 DB 값은 잠시 뒤 정확한 값으로 수렴한다.
-

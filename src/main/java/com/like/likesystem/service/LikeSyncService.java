@@ -1,6 +1,5 @@
 package com.like.likesystem.service;
 
-import com.like.likesystem.domain.Video;
 import com.like.likesystem.repository.VideoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,9 +14,10 @@ public class LikeSyncService {
 
     @Transactional
     public void processLike(Long videoId) {
-        Video video = videoRepository.findById(videoId)
-                .orElseThrow(() -> new IllegalArgumentException("Video not found"));
-        video.addLike();
+        int updated = videoRepository.incrementLikeCountBy(videoId, 1L);
+        if (updated == 0) {
+            throw new IllegalArgumentException("Video not found");
+        }
         likeFlowMetricsService.increment(LikeFlowMetricsService.SYNC, "db.direct.updated");
     }
 }

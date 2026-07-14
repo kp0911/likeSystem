@@ -20,6 +20,8 @@ public class LikeBufferedCountFlushScheduler {
 
     @Scheduled(fixedDelayString = "${like.buffered.flush-interval-ms:1000}")
     public void flushPendingLikeCounts() throws IOException {
+        flushService.publishPendingOutboxEvents();
+
         ScanOptions options = ScanOptions.scanOptions()
                 .match(LikeBufferedAsyncService.PENDING_COUNT_KEY_PREFIX + "*")
                 .count(1000)

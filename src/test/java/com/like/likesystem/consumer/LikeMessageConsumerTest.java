@@ -1,12 +1,11 @@
 package com.like.likesystem.consumer;
 
 import com.like.likesystem.event.LikeCountDeltaEvent;
+import com.like.likesystem.repository.ProcessedLikeEventRepository;
 import com.like.likesystem.repository.VideoRepository;
 import com.like.likesystem.service.LikeFlowMetricsService;
-import com.rabbitmq.client.Channel;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -16,30 +15,41 @@ import static org.mockito.Mockito.when;
 class LikeMessageConsumerTest {
 
     private final VideoRepository videoRepository = mock(VideoRepository.class);
+    private final ProcessedLikeEventRepository processedLikeEventRepository = mock(ProcessedLikeEventRepository.class);
     private final LikeFlowMetricsService likeFlowMetricsService = mock(LikeFlowMetricsService.class);
-    private final Channel channel = mock(Channel.class);
-    private final LikeMessageConsumer consumer = new LikeMessageConsumer(videoRepository, likeFlowMetricsService);
+    private final LikeMessageConsumer consumer = new LikeMessageConsumer(
+            videoRepository,
+            processedLikeEventRepository,
+            likeFlowMetricsService
+    );
 
     @Test
-    void receiveAggregateMessageIncrementsLikeByDeltaAndAcks() throws IOException {
+    void receiveAggregateMessageIncrementsLikeByDeltaAndRecordsEventId() {
         when(videoRepository.incrementLikeCountBy(1L, 100L)).thenReturn(1);
 
-        consumer.receiveAggregateMessage(new LikeCountDeltaEvent(1L, 100L), channel, 10L);
+        consumer.receiveAggregateMessage(new LikeCountDeltaEvent("event-1", 1L, 100L));
 
         verify(videoRepository).incrementLikeCountBy(1L, 100L);
-        verify(channel).basicAck(10L, false);
-        verify(channel, never()).basicNack(10L, false, false);
+        verify(processedLikeEventRepository).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
-    void receiveAggregateMessageNacksAndRethrowsWhenVideoDoesNotExist() throws IOException {
+    void receiveAggregateMessageRethrowsWhenVideoDoesNotExist() {
         when(videoRepository.incrementLikeCountBy(1L, 100L)).thenReturn(0);
 
-        assertThatThrownBy(() -> consumer.receiveAggregateMessage(new LikeCountDeltaEvent(1L, 100L), channel, 10L))
+        assertThatThrownBy(() -> consumer.receiveAggregateMessage(new LikeCountDeltaEvent("event-1", 1L, 100L)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Video not found");
 
-        verify(channel).basicNack(10L, false, false);
-        verify(channel, never()).basicAck(10L, false);
+        verify(processedLikeEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void receiveAggregateMessageSkipsAlreadyProcessedEvent() {
+        when(processedLikeEventRepository.existsById("event-1")).thenReturn(true);
+
+        consumer.receiveAggregateMessage(new LikeCountDeltaEvent("event-1", 1L, 100L));
+
+        verify(videoRepository, never()).incrementLikeCountBy(1L, 100L);
     }
 }

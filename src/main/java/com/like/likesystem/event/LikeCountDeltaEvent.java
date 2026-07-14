@@ -12,6 +12,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LikeCountDeltaEvent implements Serializable {
+    private String eventId;
     private Long videoId;
     private Long delta;
 }

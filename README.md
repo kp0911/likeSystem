@@ -128,9 +128,9 @@ Important k6 metrics:
 
 ## How To Judge The Result
 
-For `/sync`, the HTTP response includes the database update path. Because pessimistic locking is disabled, high concurrency may cause lost updates.
+For `/sync`, the HTTP response includes one atomic database update: `like_count = like_count + 1`. It avoids lost updates, but every request still waits for a database write.
 
-For `/buffered-async`, the HTTP response only updates Redis. A scheduler periodically flushes Redis pending counts to RabbitMQ as aggregate delta events, and the consumer applies `like_count += delta` to the database.
+For `/buffered-async`, the HTTP response validates the video and atomically updates Redis. A scheduler moves pending counts to a Redis outbox, publishes aggregate delta events only after RabbitMQ broker confirmation, and the consumer applies `like_count += delta` to the database once per event ID.
 
 - `Ready`: messages waiting to be consumed
 - `Unacked`: messages currently handled by consumers
@@ -140,7 +140,7 @@ For `/buffered-async`, the HTTP response only updates Redis. A scheduler periodi
 Interpretation:
 
 - If `/buffered-async` has low `p(95)` and `like.aggregate.queue` drains quickly, it is reducing RabbitMQ message count and database update count.
-- If `/sync` has high `p(95)` or final DB count is lower than request count, direct DB update is showing either performance or concurrency limits.
+- If `/sync` has high `p(95)`, direct DB update is showing its database write bottleneck. Its atomic update query should keep the final DB count aligned with successful requests.
 
 Check final DB count:
 

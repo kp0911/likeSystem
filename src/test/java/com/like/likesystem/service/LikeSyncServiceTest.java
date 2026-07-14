@@ -1,14 +1,11 @@
 package com.like.likesystem.service;
 
-import com.like.likesystem.domain.Video;
 import com.like.likesystem.repository.VideoRepository;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class LikeSyncServiceTest {
@@ -18,18 +15,17 @@ class LikeSyncServiceTest {
     private final LikeSyncService likeSyncService = new LikeSyncService(videoRepository, likeFlowMetricsService);
 
     @Test
-    void processLikeIncrementsLikeCount() {
-        Video video = new Video();
-        when(videoRepository.findById(1L)).thenReturn(Optional.of(video));
+    void processLikeAtomicallyIncrementsLikeCount() {
+        when(videoRepository.incrementLikeCountBy(1L, 1L)).thenReturn(1);
 
         likeSyncService.processLike(1L);
 
-        assertThat(video.getLikeCount()).isEqualTo(1L);
+        verify(videoRepository).incrementLikeCountBy(1L, 1L);
     }
 
     @Test
     void processLikeThrowsWhenVideoDoesNotExist() {
-        when(videoRepository.findById(1L)).thenReturn(Optional.empty());
+        when(videoRepository.incrementLikeCountBy(1L, 1L)).thenReturn(0);
 
         assertThatThrownBy(() -> likeSyncService.processLike(1L))
                 .isInstanceOf(IllegalArgumentException.class)
